@@ -1,0 +1,16 @@
+version: "0.3"
+intent: "chat"
+messages:
+  - role: "user"
+    parts:
+      - type: "text"
+        text: "What's in this image?"
+      - type: "image_url"
+        image_url:
+          url: "https://example.com/sample-image.jpg"
+          detail: "high"
+routing:
+  call_id: "openai:gpt-4o-mini.chat"
+instructions:
+  max_output_tokens: 512
+  temperature: 0.3

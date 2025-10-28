@@ -1,0 +1,12 @@
+version: "0.3"
+intent: "chat"
+messages:
+  - role: "user"
+    parts:
+      - type: "text"
+        text: "Hello! Can you help me understand how ThinkerQL works?"
+routing:
+  call_id: "local:echo.chat"
+instructions:
+  max_output_tokens: 256
+  temperature: 0.7

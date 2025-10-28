@@ -1,0 +1,571 @@
+THINKER CORE - DETAILED ARCHITECTURE
+=====================================
+
+OVERVIEW
+--------
+Thinker Core implements a registry-driven LLM access system with a unified request
+language (ThinkerQL). The architecture follows a clean separation of concerns
+with deterministic contracts and spec-first design principles.
+
+ARCHITECTURAL PRINCIPLES
+------------------------
+1. Spec-first: ThinkerQL and Registry are sources of truth
+2. Data-driven: Models/caps/prices live in YAML, not code
+3. Small core: Sequential and deterministic execution for MVP
+4. Deterministic contracts: Token feasibility, schema validity, cost upper bound, order preservation
+5. Separation: ThinkerQL (request) → Resolver (registry) → Adapter (provider)
+
+SYSTEM ARCHITECTURE
+-------------------
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        THINKER CORE SYSTEM                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │   ThinkerQL │    │   Registry  │    │  Adapters   │         │
+│  │   Layer     │    │   Layer     │    │   Layer     │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│           │                   │                   │             │
+│           ▼                   ▼                   ▼             │
+│  ┌─────────────────────────────────────────────────────────────┤
+│  │                    CORE ORCHESTRATION                       │
+│  │                                                             │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │  │   Parser    │  │  Resolver   │  │  Executor    │       │
+│  │  │             │  │             │  │             │       │
+│  │  │ • Schema    │  │ • Model     │  │ • Token     │       │
+│  │  │   Validation│  │   Selection │  │   Counting  │       │
+│  │  │ • Request   │  │ • Capability│  │ • Autoshrink│       │
+│  │  │   Parsing   │  │   Matching  │  │ • Cost Calc │       │
+│  │  │ • Modality  │  │ • Routing   │  │ • Response  │       │
+│  │  │   Detection │  │   Logic     │  │   Formatting│       │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘       │
+│  └─────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │   Storage   │    │   Auth      │    │   Utils     │         │
+│  │   Layer     │    │   Layer     │    │   Layer     │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+└─────────────────────────────────────────────────────────────────┘
+
+COMPONENT DETAILS
+-----------------
+
+1. THINKERQL LAYER
+   Purpose: Unified request/response specification
+   
+   Components:
+   - parse.py: Request parsing and validation
+   - request_schema.json: JSON schema for requests
+   - response_schema.json: JSON schema for responses
+   
+   Responsibilities:
+   - Validate incoming ThinkerQL requests against schema
+   - Parse request into internal representation
+   - Determine required modality and capabilities
+   - Extract routing information
+   - Provide specific error messages for validation failures
+   
+   Data Flow:
+   ThinkerQL Request → Schema Validation → Internal Request → Modality Detection
+
+2. REGISTRY LAYER
+   Purpose: Centralized model management and routing
+   
+   Components:
+   - schema.py: Pydantic models for registry data
+   - loader.py: YAML loading and catalog merging
+   - store.py: In-memory storage with CRUD operations
+   - resolver.py: Call resolution and capability matching
+   - auth.py: Credential management and client factories
+   - ingestors/: Provider-specific model ingestion
+   
+   Responsibilities:
+   - Store model definitions with capabilities and limits
+   - Resolve requests to appropriate models
+   - Match capabilities and modalities
+   - Manage API credentials securely
+   - Ingest models from various providers
+   
+   Data Flow:
+   Registry YAML → Catalog Loading → Store Population → Call Resolution
+
+3. ADAPTERS LAYER
+   Purpose: Provider-specific LLM access
+   
+   Components:
+   - base.py: Abstract base adapter interface
+   - local_echo.py: Local testing adapter
+   - openai.py: OpenAI API adapter
+   - __init__.py: Adapter registry
+   
+   Responsibilities:
+   - Convert internal requests to provider-specific formats
+   - Handle provider-specific authentication
+   - Process responses and extract usage information
+   - Implement provider-specific features (JSON mode, images, etc.)
+   
+   Data Flow:
+   Internal Request → Provider Format → API Call → Response Processing
+
+4. CORE ORCHESTRATION
+   Purpose: Main processing pipeline
+   
+   Components:
+   - core.py: Main Thinker class
+   - primitives.py: Batch processing functions
+   - tokenization.py: Token counting and message truncation
+   - pricebook.py: Cost calculation
+   
+   Responsibilities:
+   - Orchestrate the complete request processing pipeline
+   - Handle autoshrink for token limits
+   - Calculate costs and track usage
+   - Process batch requests with order preservation
+   - Implement budget controls
+   
+   Data Flow:
+   Request → Parsing → Resolution → Adapter → Response → Cost Calculation
+
+5. STORAGE LAYER
+   Purpose: Data persistence and management
+   
+   Components:
+   - Registry store (in-memory for MVP)
+   - Version tracking
+   - Catalog checksums
+   
+   Responsibilities:
+   - Store registry data efficiently
+   - Track version changes
+   - Provide fast lookups
+   - Support CRUD operations
+   
+   Future: SQLite integration for persistent storage
+
+6. AUTH LAYER
+   Purpose: Secure credential management
+   
+   Components:
+   - Credentials class for API key management
+   - Provider-specific client factories
+   - Environment variable support
+   - Secrets file support
+   
+   Responsibilities:
+   - Manage API keys securely
+   - Create authenticated HTTP clients
+   - Support multiple credential sources
+   - Never leak credentials in logs
+   
+   Security: Keys redacted in all logging and error messages
+
+7. UTILS LAYER
+   Purpose: Supporting utilities
+   
+   Components:
+   - Token counting and estimation
+   - Message truncation for autoshrink
+   - JSON schema validation
+   - Cost calculation utilities
+   
+   Responsibilities:
+   - Provide token counting capabilities
+   - Implement autoshrink logic
+   - Validate JSON responses
+   - Calculate accurate costs
+
+DATA FLOW ARCHITECTURE
+----------------------
+
+1. SINGLE REQUEST FLOW
+   ┌─────────────┐
+   │ ThinkerQL   │
+   │ Request     │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Schema      │
+   │ Validation  │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Request     │
+   │ Parsing     │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Modality    │
+   │ Detection   │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Call        │
+   │ Resolution  │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Token       │
+   │ Counting    │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Autoshrink  │
+   │ (if needed) │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Adapter     │
+   │ Execution   │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Response    │
+   │ Processing  │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Cost        │
+   │ Calculation │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Final       │
+   │ Response    │
+   └─────────────┘
+
+2. BATCH REQUEST FLOW
+   ┌─────────────┐
+   │ Batch       │
+   │ Requests    │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Order       │
+   │ Preservation│
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Budget      │
+   │ Check       │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Individual  │
+   │ Processing  │
+   │ (per request)│
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Error       │
+   │ Handling    │
+   └─────┬───────┘
+         │
+         ▼
+   ┌─────────────┐
+   │ Results     │
+   │ Collection  │
+   └─────────────┘
+
+REGISTRY ARCHITECTURE
+---------------------
+
+Registry Data Model:
+┌─────────────────────────────────────────────────────────────────┐
+│                        REGISTRY CALL                            │
+├─────────────────────────────────────────────────────────────────┤
+│ call_id: "provider:model.kind" (e.g., "openai:gpt-4o-mini.chat")│
+│ provider: "openai"                                              │
+│ model_id: "gpt-4o-mini"                                        │
+│ kind: "chat" | "embed" | "docai"                               │
+│ modality: "text" | "multimodal" | "vision" | "audio" | "video" │
+│ caps: ["json_mode", "tools", "images_in"]                       │
+│ limits: {max_input_tokens, max_output_tokens, qps, tokens_per_sec}│
+│ price: {input_per_1k, output_per_1k}                          │
+│ adapter: "openai" | "local" | "anthropic" | ...               │
+│ payload_style: "chat_completions_v1" | "messages_v1" | ...     │
+│ endpoint: "https://api.openai.com/v1/chat/completions"        │
+│ aliases: ["openai:multimodal-cheap"]                           │
+└─────────────────────────────────────────────────────────────────┘
+
+Registry Operations:
+1. Load: YAML → Catalog → Store
+2. Merge: Multiple catalogs with primary override
+3. Resolve: Request → Model selection → Capability matching
+4. Query: By provider, model, alias, capability
+5. Version: Track changes and checksums
+
+RESOLUTION ALGORITHM
+--------------------
+
+1. Direct Call ID Resolution:
+   - If call_id provided, look up directly
+   - Verify capability match
+   - Return model or raise CAPABILITY_MISMATCH
+
+2. Model Specification Resolution:
+   - Parse "provider/model" format
+   - Find all models for provider/model
+   - Filter by intent-to-kind conversion
+   - Filter by capability match
+   - Return first match or raise MODEL_NOT_FOUND_OR_UNSUITABLE
+
+3. Alias Resolution:
+   - Find all models with matching alias
+   - Filter by capability match
+   - Return first match or raise ALIAS_UNRESOLVED
+
+4. Policy-based Selection (future):
+   - Implement cost optimization
+   - Implement load balancing
+   - Implement quality preferences
+
+CAPABILITY MATCHING
+-------------------
+
+Modality Compatibility Matrix:
+┌─────────────┬─────────┬─────────────┬─────────┬─────────┬─────────┐
+│ Request     │ Text    │ Multimodal │ Vision  │ Audio   │ Video   │
+├─────────────┼─────────┼─────────────┼─────────┼─────────┼─────────┤
+│ Text        │   ✓     │     ✓      │    ✗    │    ✗    │    ✗    │
+│ Multimodal  │   ✗     │     ✓      │    ✗    │    ✗    │    ✗    │
+│ Vision      │   ✗     │     ✓      │    ✓    │    ✗    │    ✗    │
+│ Audio       │   ✗     │     ✓      │    ✗    │    ✓    │    ✗    │
+│ Video       │   ✗     │     ✓      │    ✗    │    ✗    │    ✓    │
+└─────────────┴─────────┴─────────────┴─────────┴─────────┴─────────┘
+
+Capability Requirements:
+- All required capabilities must be present in model
+- Capabilities: json_mode, tools, images_in, streaming, etc.
+- Exact match required (no partial matching)
+
+ADAPTER ARCHITECTURE
+--------------------
+
+Base Adapter Interface:
+```python
+class BaseAdapter(ABC):
+    @abstractmethod
+    def chat(self, request: InternalRequest, call: RegistryCall) -> Response:
+        pass
+```
+
+Adapter Responsibilities:
+1. Convert InternalRequest to provider-specific format
+2. Handle provider authentication
+3. Make API calls with proper error handling
+4. Convert provider response to standard format
+5. Extract usage information (tokens, costs)
+6. Handle provider-specific features
+
+Provider-Specific Implementations:
+- OpenAI: chat_completions_v1 format, JSON mode, image support
+- Anthropic: messages_v1 format, tool use, image support
+- Google: generateContent_v1 format, multimodal support
+- Local: echo adapter for testing, Ollama integration
+
+ERROR HANDLING ARCHITECTURE
+---------------------------
+
+Error Categories:
+1. Validation Errors: Schema validation failures
+2. Resolution Errors: Model not found, capability mismatch
+3. Authentication Errors: Missing or invalid API keys
+4. API Errors: Provider API failures
+5. Budget Errors: Cost limit exceeded
+6. Token Errors: Token limit exceeded
+
+Error Flow:
+Request → Validation → Resolution → Execution → Response
+    ↓         ↓           ↓           ↓         ↓
+  Error    Error      Error      Error    Error
+Handler   Handler    Handler    Handler  Handler
+
+Error Response Format:
+```python
+{
+    "error": "ERROR_CODE",
+    "message": "Human-readable message",
+    "details": {...},  # Optional additional context
+    "request_id": "uuid"  # Optional request tracking
+}
+```
+
+SECURITY ARCHITECTURE
+---------------------
+
+Credential Management:
+1. Environment Variables: Primary source
+2. Secrets File: Secondary source (JSON format)
+3. Never log credentials: All keys redacted
+4. Secure storage: No hardcoded keys
+
+API Key Redaction:
+- All API keys replaced with "***" in logs
+- Error messages never expose keys
+- Debug output sanitized
+- Audit logs clean
+
+Authentication Flow:
+1. Check environment variables
+2. Check secrets file
+3. Create authenticated client
+4. Use client for API calls
+5. Handle auth failures gracefully
+
+PERFORMANCE ARCHITECTURE
+------------------------
+
+Token Counting:
+- Efficient word-based estimation for MVP
+- Optional tiktoken integration for accuracy
+- Caching for repeated calculations
+- Batch processing optimization
+
+Autoshrink Algorithm:
+1. Count total tokens (input + max_output)
+2. If exceeds limit, truncate last user message
+3. Repeat until within limits
+4. Safety limit: max 10 iterations
+5. Preserve message structure
+
+Cost Calculation:
+- Real-time cost tracking
+- Budget enforcement
+- Per-request cost reporting
+- Batch cost aggregation
+
+Caching Strategy (future):
+- Model metadata caching
+- Response caching for identical requests
+- Registry version caching
+- Token count caching
+
+TESTING ARCHITECTURE
+--------------------
+
+Test Categories:
+1. Unit Tests: Individual component testing
+2. Integration Tests: Cross-component testing
+3. End-to-End Tests: Complete workflow testing
+4. Mock Tests: External dependency mocking
+5. CLI Tests: Command-line interface testing
+
+Test Coverage:
+- 95%+ overall coverage
+- All public APIs tested
+- Error paths covered
+- Edge cases handled
+- Performance benchmarks
+
+Mock Strategy:
+- HTTP requests mocked with respx
+- External APIs never called in tests
+- Deterministic test data
+- Isolated test environments
+
+DEPLOYMENT ARCHITECTURE
+-----------------------
+
+Package Structure:
+- Wheel distribution for production
+- Source distribution for development
+- Editable installs for development
+- Dependency management with pip
+
+Installation Methods:
+1. Development: `pip install -e .`
+2. Production: `pip install thinker-core`
+3. With dev tools: `pip install -e .[dev]`
+
+CLI Interface:
+- Module-based CLI: `python -m thinker.cli`
+- Subcommand structure: registry-*, chat-ql, map-chat-ql
+- Help system: `--help` for all commands
+- Error handling: Graceful failure with clear messages
+
+Configuration:
+- YAML-based registry files
+- JSON-based pricebook files
+- Environment variable configuration
+- Optional config file support
+
+MONITORING & OBSERVABILITY
+---------------------------
+
+Logging Strategy:
+- Structured logging with rich formatting
+- Request/response logging (sanitized)
+- Error logging with context
+- Performance metrics logging
+- Audit trail for compliance
+
+Metrics Collection:
+- Request counts per provider
+- Token usage statistics
+- Cost tracking
+- Error rates
+- Response times
+
+Health Checks:
+- Registry health
+- Provider connectivity
+- Authentication status
+- Storage availability
+
+FUTURE ARCHITECTURE CONSIDERATIONS
+----------------------------------
+
+Scalability Enhancements:
+1. Async/await support for concurrent requests
+2. Connection pooling for HTTP clients
+3. Distributed registry with consensus
+4. Load balancing across providers
+5. Circuit breakers for reliability
+
+Advanced Features:
+1. Streaming response support
+2. Real-time model updates
+3. A/B testing framework
+4. Quality scoring system
+5. Custom adapter plugins
+
+Enterprise Features:
+1. Role-based access control
+2. Audit logging and compliance
+3. Multi-tenancy support
+4. SLA monitoring
+5. Cost allocation and billing
+
+Integration Points:
+1. Kubernetes operator
+2. Docker containers
+3. CI/CD pipeline integration
+4. Monitoring system integration
+5. Log aggregation systems
+
+This architecture provides a solid foundation for a production-ready
+LLM access system while maintaining simplicity and determinism for
+the MVP. The clean separation of concerns and spec-first approach
+enable easy extension and maintenance as requirements evolve.
+
+---
+
+Architecture Version: 1.0
+Last Updated: October 2024
+Author: Anjan Goswami

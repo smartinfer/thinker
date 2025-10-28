@@ -1,0 +1,12 @@
+# Development dependencies for Thinker Core
+# Generated from thinker-core/pyproject.toml
+
+# Include core dependencies
+-r requirements.txt
+
+# Additional dev dependencies
+pytest>=8.2
+respx>=0.21
+mypy>=1.11
+ruff>=0.6
+black>=24.8
