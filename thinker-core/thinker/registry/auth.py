@@ -13,6 +13,7 @@ import os
 import json
 from pathlib import Path
 import httpx
+from .secure_credentials import SecureCredentials
 
 class Credentials:
     """Manages API credentials from environment variables and JSON files."""
@@ -36,6 +37,22 @@ class Credentials:
             return os.getenv(env)
         
         return self._secrets.get(provider, {}).get(key_name)
+
+
+def get_credentials(storage_type: str = "auto") -> Credentials:
+    """
+    Get credentials instance with secure storage fallback.
+    
+    Args:
+        storage_type: Storage type ("keyring", "encrypted_file", "env", or "auto")
+        
+    Returns:
+        Credentials instance
+    """
+    if storage_type in ["keyring", "encrypted_file", "auto"]:
+        return SecureCredentials(storage_type=storage_type)
+    else:
+        return Credentials()
 
 def openai_client(creds: Credentials, timeout: float = 20.0) -> httpx.Client:
     """Create authenticated OpenAI client."""
@@ -96,3 +113,68 @@ def gemini_client(creds: Credentials, timeout: float = 20.0) -> httpx.Client:
         params={"key": key},
         timeout=timeout
     )
+
+
+def _test_provider_key(provider: str, key: str) -> tuple[bool, str]:
+    """
+    Test if a provider key works by making a test API call.
+    
+    Args:
+        provider: Provider name
+        key: API key to test
+        
+    Returns:
+        (success, message) tuple
+    """
+    try:
+        if provider == "openai":
+            with httpx.Client() as client:
+                response = client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    return True, "OpenAI key is valid"
+                elif response.status_code == 401:
+                    return False, "OpenAI key is invalid or expired"
+                else:
+                    return False, f"OpenAI API error: {response.status_code}"
+        
+        elif provider == "anthropic":
+            with httpx.Client() as client:
+                response = client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    return True, "Anthropic key is valid"
+                elif response.status_code == 401:
+                    return False, "Anthropic key is invalid or expired"
+                else:
+                    return False, f"Anthropic API error: {response.status_code}"
+        
+        elif provider == "google":
+            with httpx.Client() as client:
+                response = client.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    params={"key": key},
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    return True, "Google key is valid"
+                elif response.status_code == 401:
+                    return False, "Google key is invalid or expired"
+                else:
+                    return False, f"Google API error: {response.status_code}"
+        
+        else:
+            return False, f"Unknown provider: {provider}"
+            
+    except httpx.TimeoutException:
+        return False, "API test timed out"
+    except httpx.ConnectError:
+        return False, "Failed to connect to API"
+    except Exception as e:
+        return False, f"Test failed: {str(e)}"

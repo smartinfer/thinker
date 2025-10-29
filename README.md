@@ -4,7 +4,17 @@ Unified, minimal LLM access with a registry-driven router and ThinkerQL request 
 
 ## Overview
 
-Thinker provides a unified interface for accessing various LLM providers through a single request language (ThinkerQL) and a registry-driven routing system. The MVP supports OpenAI and local Ollama models with schema contracts and comprehensive testing.
+Thinker provides a unified interface for accessing various LLM providers through a single request language (ThinkerQL) and a registry-driven routing system. The MVP supports OpenAI and local Ollama models with schema contracts, comprehensive testing, secure credential management, and real-time observability.
+
+## Key Features
+
+- **🔐 Secure Credential Management**: OS keyring integration and encrypted file storage
+- **📊 Real-time Observability**: Live dashboard with usage statistics and performance metrics
+- **🎯 Registry-driven Routing**: Intelligent model selection based on capabilities and requirements
+- **📝 ThinkerQL Specification**: Unified request language for all LLM providers
+- **💰 Cost Tracking**: Real-time cost monitoring and budget controls
+- **🔄 Batch Processing**: Efficient processing of multiple requests
+- **🛡️ Privacy-first Design**: No prompt content stored in metrics
 
 ## Project Structure
 
@@ -37,19 +47,56 @@ pip install -r requirements-dev.txt
 pip install -e thinker-core/
 ```
 
+### Secure Credential Management
+
+```bash
+source .thinker-env/bin/activate
+
+# Set up API keys securely
+thinker keys set openai
+thinker keys set anthropic
+
+# List configured providers
+thinker keys list
+
+# Test API keys
+thinker keys test openai
+
+# Rotate keys
+thinker keys rotate openai
+```
+
 ### Using the Registry CLI
 
 ```bash
 source .thinker-env/bin/activate
 
 # Validate registry
-python thinker-core/thinker/cli.py registry validate spec/registry.yaml
+thinker registry-validate spec/registry.yaml
 
 # Load registry
-python thinker-core/thinker/cli.py registry load spec/registry.yaml
+thinker registry-load spec/registry.yaml
 
 # List available models
-python thinker-core/thinker/cli.py registry list
+thinker registry-list
+```
+
+### Real-time Observability
+
+```bash
+source .thinker-env/bin/activate
+
+# View usage statistics
+thinker stats
+
+# Live monitoring dashboard
+thinker stats --live
+
+# Filter by provider
+thinker stats --provider openai
+
+# Today's usage
+thinker stats --today
 ```
 
 ### Running Tests
@@ -59,13 +106,50 @@ source .thinker-env/bin/activate
 pytest thinker-core/thinker/tests/ -q
 ```
 
+## CLI Commands
+
+### Key Management
+```bash
+thinker keys set <provider>      # Set API key for provider
+thinker keys list                # List configured providers
+thinker keys test <provider>     # Test API key
+thinker keys rotate <provider>   # Rotate API key
+thinker keys delete <provider>   # Delete API key
+```
+
+### Observability
+```bash
+thinker stats                    # Show usage statistics
+thinker stats --live            # Live updating dashboard
+thinker stats --provider <name> # Filter by provider
+thinker stats --today           # Today's usage
+thinker stats --last-hour       # Last hour's usage
+```
+
+### Registry Management
+```bash
+thinker registry-validate <file> # Validate registry YAML
+thinker registry-load <file>     # Load registry
+thinker registry-list           # List available models
+thinker registry-get <call_id>  # Get model details
+```
+
+### Chat Operations
+```bash
+thinker chat-ql --registry <file> --pricebook <file> --ql <file>
+thinker map-chat-ql --registry <file> --pricebook <file> --ql-glob <pattern>
+```
+
 ## Key Features
 
-- **ThinkerQL**: Single request language for all LLM operations
-- **Registry-driven routing**: Data-driven model/capability/price definitions
-- **Provider adapters**: OpenAI and Ollama support
-- **Schema contracts**: Deterministic token feasibility and cost bounds
-- **Comprehensive testing**: Unit, integration, and E2E test coverage
+- **🔐 Secure Credential Management**: OS keyring integration and encrypted file storage
+- **📊 Real-time Observability**: Live dashboard with usage statistics and performance metrics
+- **🎯 Registry-driven Routing**: Intelligent model selection based on capabilities and requirements
+- **📝 ThinkerQL Specification**: Unified request language for all LLM providers
+- **💰 Cost Tracking**: Real-time cost monitoring and budget controls
+- **🔄 Batch Processing**: Efficient processing of multiple requests
+- **🛡️ Privacy-first Design**: No prompt content stored in metrics
+- **🧪 Comprehensive Testing**: Unit, integration, and E2E test coverage
 
 ## Architecture
 

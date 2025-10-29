@@ -90,6 +90,11 @@ secrets.json
 *.key
 *.pem
 
+# Thinker secure storage
+.thinker/
+thinker.keystore
+*.encrypted
+
 # OS
 .DS_Store
 .DS_Store?
