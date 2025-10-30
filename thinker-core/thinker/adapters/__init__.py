@@ -9,11 +9,13 @@ Author: Anjan Goswami
 
 from .local_echo import LocalEchoAdapter
 from .openai import OpenaiAdapter
+from .ollama import OllamaAdapter
 
 # Adapter registry
 REGISTRY = {
     "local": LocalEchoAdapter(),
-    "openai": OpenaiAdapter()
+    "openai": OpenaiAdapter(),
+    "ollama": OllamaAdapter(),
 }
 
 def get_adapter(name: str):

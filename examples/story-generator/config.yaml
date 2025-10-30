@@ -1,0 +1,42 @@
+agent:
+  model: "qwen2.5:1.5b"
+  alternatives:
+    - "llama3.2:3b"
+    - "phi3:mini"
+  max_tokens: 150
+
+story:
+  ollama:
+    default: "qwen2.5:7b"
+    alternatives:
+      - "phi4:14b"
+      - "llama3.2:7b"
+  openai:
+    default: "gpt-4o-mini"
+    fallback: "gpt-3.5-turbo"
+  lengths:
+    short:
+      paragraphs: "3-4"
+      minutes: "2-3"
+    medium:
+      paragraphs: "5-7"
+      minutes: "4-5"
+    long:
+      paragraphs: "8-10"
+      minutes: "6-8"
+  max_retries: 3
+  timeout: 60
+
+ollama:
+  endpoint: "http://localhost:11434"
+
+validation:
+  min_words: 100
+  max_words: 1000
+
+output:
+  directory: "outputs"
+  format: "txt"
+  include_metadata: true
+
+

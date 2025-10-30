@@ -1,0 +1,27 @@
+============================================================
+Story for: Friend
+Age: 5.0 years old
+Characters: a friendly animal
+Setting: a friendly park
+Lesson: kindness
+
+Model: gpt-4o-mini (openai)
+Tokens: 182 in, 565 out
+Cost: $0.0004
+============================================================
+
+**Lila and the Kindness Tree**
+
+Once upon a time, in a sunny park filled with bright flowers and chirping birds, there lived a friendly squirrel named Sammy. Sammy had fluffy fur and the biggest, warmest smile. Every day, he played with his friends in the park, but what he loved most was meeting new animals and sharing goodies from his secret stash of acorns.
+
+One sunny afternoon, a little girl named Friend came to the park with her mom. Friend loved to play and explore. She noticed Sammy sitting on a branch, nibbling on an acorn. Curiously, she walked closer and waved hello. "Hi, I'm Friend!" she said with a big smile. Sammy's eyes sparkled with joy. "Hello, Friend! Would you like to share my acorns?" he asked, excited to make a new friend.
+
+Friend's face lit up! "Yes, please!" she squealed. Sammy jumped down and led her to his special spot under the Kindness Tree. The tree was magical, with leaves that shimmered in the sunlight. It was said that the more kindness you shared, the more the tree would sparkle. Together, they sat under the tree, munching on yummy acorns and laughing as they talked about their favorite things.
+
+As they enjoyed their snack, they heard a soft whimper nearby. It was a little bunny named Bella, looking sad and hungry. Friend's heart felt warm. "Sammy, we should help Bella!" she said. Sammy nodded, and together they offered Bella some of their acorns. Bella's eyes brightened, and she thanked them with a big bunny hug. The Kindness Tree shimmered even brighter as they shared their snacks.
+
+After their tasty treat, the three friends played games together. They chased butterflies, sang silly songs, and danced around the sparkling tree. The more fun they had, the more joy filled the park. Friend felt happy knowing that being kind made everyone smile. As the sun began to set, Friend knew it was time to go home, but she felt warm and fuzzy inside.
+
+Before leaving, Friend hugged Sammy and Bella tightly. "Thank you for the best day ever!" she said. Sammy and Bella waved goodbye as she skipped off with her mom, their hearts full of kindness. The Kindness Tree sparkled brightly, knowing that Friend would always remember the joy of sharing and helping others.
+
+That night, as Friend snuggled in her bed, she dreamed of magical parks, friendly animals, and the kindness they shared. She couldn't wait to return to the park and spread even more kindness with her new friends. And as she drifted off to sleep, the stars twinkled above, just like the Kindness Tree, reminding her that kindness makes the world a brighter place.

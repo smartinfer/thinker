@@ -94,9 +94,23 @@ class OpenaiAdapter(BaseAdapter):
         return openai_messages
     
     def _get_api_key(self) -> str:
-        """Get OpenAI API key from environment."""
+        """Get OpenAI API key from env or Thinker secure storage."""
         import os
         key = os.getenv("OPENAI_API_KEY")
+        if not key:
+            # Try secure keyring/encrypted store first
+            try:
+                from thinker.registry.secure_credentials import SecureCredentials
+                key = SecureCredentials().get("openai")
+            except Exception:
+                key = None
+        if not key:
+            # Fallback to legacy plain Credentials (env/json)
+            try:
+                from thinker.registry.auth import Credentials
+                key = Credentials().get("openai")
+            except Exception:
+                key = None
         if not key:
             raise Exception("OPENAI_API_KEY environment variable not set")
         return key

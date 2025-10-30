@@ -1,0 +1,25 @@
+============================================================
+Story for: Friend
+Age: 5.0 years old
+Characters: wolf, rabbit
+Setting: forest
+Lesson: friendship
+
+Model: gpt-4o-mini (openai)
+Tokens: 180 in, 485 out
+Cost: $0.0003
+============================================================
+
+**The Wolf and the Rabbit: A Story for Friend**
+
+Once upon a time, in a bright and sunny forest, there lived a kind wolf named Willow. Willow had soft, gray fur and bright, curious eyes. She loved to explore the forest every day, but she always felt a little lonely. One sunny morning, while she was wandering by a sparkling stream, she spotted a little rabbit hopping happily. The rabbit had fluffy white fur and big, floppy ears. His name was Benny.
+
+Willow watched Benny play with a colorful butterfly, and she thought he looked like he was having so much fun! But Willow was shy. She wanted to join in, but what would Benny think of a big wolf? Taking a deep breath, she decided to say hello. “Hi there! I’m Willow,” she called softly.
+
+Benny turned around and smiled. “Hi, Willow! I’m Benny! Do you want to play with me?” Willow felt her heart flutter with joy. “Yes, I would love to!” she said with a big grin. They spent the day hopping around, chasing butterflies, and playing hide-and-seek among the tall trees. As they played, they laughed and shared stories about their adventures in the forest.
+
+As the sun started to set, painting the sky with pink and orange colors, Benny noticed that Willow looked a little sad. “What’s wrong, Willow?” he asked gently. Willow sighed softly and said, “I always thought wolves were too big and scary for friends. But you have shown me that it’s okay to be different.” Benny’s ears perked up with excitement. “Of course! Friends come in all shapes and sizes. I love having you as my friend!”
+
+With that, Willow felt warm and happy inside. They promised to meet again every day to play and explore. From that day on, the forest was filled with their laughter. Willow learned that friendship could be found in the most unexpected places, and Benny learned that being brave enough to befriend someone different could lead to the best adventures.
+
+As the stars twinkled above, Willow and Benny said goodnight. They both felt grateful for their new friendship and couldn’t wait for tomorrow. And as Friend drifted off to sleep, they knew that, just like Willow and Benny, friendships can blossom in the heart of the forest, making every day a magical adventure. Sweet dreams, Friend!
