@@ -8,7 +8,7 @@ Author: Anjan Goswami
 """
 
 import time
-from typing import Dict, Any
+from typing import TYPE_CHECKING, Dict, Any
 from .thinkerql.parse import parse_thinkerql
 from .registry.resolver import resolve_call
 from .registry.store import RegistryStore
@@ -17,13 +17,19 @@ from .pricebook import PriceBook
 from .tokenization import count_tokens, truncate_last_user, validate_json_schema
 from .observability.metrics import record_request
 
+if TYPE_CHECKING:
+    from .image_budget import BudgetLedger
+    from .image_models import ImageGenerationRequest, ImageGenerationResponse
+
 class Thinker:
     """Main Thinker class for unified LLM access."""
     
-    def __init__(self, store: RegistryStore, pricebook: PriceBook):
+    def __init__(self, store: RegistryStore, pricebook: PriceBook, image_ledger=None):
         """Initialize Thinker instance."""
         self.store = store
         self.pricebook = pricebook
+        self._image_ledger = image_ledger
+        self._image_gateway = None
     
     @classmethod
     def from_files(cls, registry_path: str, pricebook_path: str):
@@ -124,6 +130,21 @@ class Thinker:
                 error_code=str(e)
             )
             raise
+
+    def generate_image(
+        self,
+        request: "ImageGenerationRequest",
+        *,
+        budget_ledger: "BudgetLedger | None" = None,
+    ) -> "ImageGenerationResponse":
+        """Generate image bytes through an exact registry call with durable idempotency."""
+        if self._image_gateway is None:
+            from .image_ledger import CompletionLedger
+            from .image_runtime import ImageGateway, default_ledger_path
+
+            ledger = self._image_ledger or CompletionLedger(default_ledger_path())
+            self._image_gateway = ImageGateway(self.store, ledger=ledger)
+        return self._image_gateway.generate(request, budget_ledger=budget_ledger)
 
 def get_adapter(name: str):
     """Get adapter by name."""

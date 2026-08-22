@@ -1,6 +1,6 @@
 [project]
 name = "thinker-core"
-version = "0.2.0"
+version = "0.3.0"
 description = "Thinker core library (registry-driven LLM access + ThinkerQL)"
 readme = "README.md"
 license = {file = "LICENSE"}

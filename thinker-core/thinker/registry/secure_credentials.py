@@ -70,7 +70,9 @@ class SecureCredentials:
             "anthropic": "ANTHROPIC_API_KEY",
             "together": "TOGETHER_API_KEY",
             "mistral": "MISTRAL_API_KEY",
-            "google": "GOOGLE_API_KEY"
+            "google": "GOOGLE_API_KEY",
+            "bytedance": "ARK_API_KEY",
+            "seedream": "ARK_API_KEY"
         }
         
         env_var = env_vars.get(provider)
@@ -153,7 +155,7 @@ class SecureCredentials:
             try:
                 # Note: keyring doesn't have a list_passwords method
                 # We'll check common providers
-                common_providers = ["openai", "anthropic", "together", "mistral", "google"]
+                common_providers = ["openai", "anthropic", "together", "mistral", "google", "bytedance", "seedream"]
                 for provider in common_providers:
                     if keyring.get_password(self._service_name, provider):
                         providers.append(provider)

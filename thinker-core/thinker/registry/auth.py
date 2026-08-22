@@ -30,7 +30,9 @@ class Credentials:
             "anthropic": "ANTHROPIC_API_KEY", 
             "together": "TOGETHER_API_KEY",
             "mistral": "MISTRAL_API_KEY",
-            "google": "GOOGLE_API_KEY"
+            "google": "GOOGLE_API_KEY",
+            "bytedance": "ARK_API_KEY",
+            "seedream": "ARK_API_KEY"
         }.get(provider)
         
         if env and os.getenv(env):

@@ -62,3 +62,13 @@ def resolve_call(
         if candidates: return candidates[0]
         raise ValueError("ALIAS_UNRESOLVED")
     raise ValueError("ROUTING_INSUFFICIENT")  # policy-based selection handled elsewhere
+
+
+def resolve_image_call(store: RegistryStore, call_id: str) -> RegistryCall:
+    """Resolve an exact image call without policy or alias routing."""
+    call = store.get_call(call_id)
+    if call is None:
+        raise ValueError(f"CALL_NOT_FOUND: {call_id}")
+    if call.kind != "image_generation" or call.modality != "image_output":
+        raise ValueError(f"CALL_NOT_IMAGE_GENERATION: {call_id}")
+    return call

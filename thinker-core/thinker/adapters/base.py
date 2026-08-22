@@ -17,3 +17,12 @@ class BaseAdapter(ABC):
     def chat(self, request: Any, call: Any) -> Any:
         """Process a chat request."""
         pass
+
+
+class ImageAdapter(ABC):
+    """Provider-neutral interface for image-generation adapters."""
+
+    @abstractmethod
+    def generate_image(self, request: Any, call: Any) -> Any:
+        """Execute one external image-generation request."""
+        pass

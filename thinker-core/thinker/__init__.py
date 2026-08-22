@@ -10,6 +10,22 @@ Author: Anjan Goswami
 """
 
 from .core import Thinker
+from .image_budget import BudgetLedger
+from .image_ledger import CompletionLedger, request_fingerprint
+from .image_models import (
+    AttemptRecord,
+    CostEstimate,
+    ImageGenerationRequest,
+    ImageGenerationResponse,
+    ImageOutput,
+    StructuredError,
+)
+from .image_pricing import estimate_image_request_cost
+from .image_runtime import map_images
 
-__all__ = ["Thinker"]
-__version__ = "0.2.0"
+__all__ = [
+    "Thinker", "ImageGenerationRequest", "ImageGenerationResponse", "ImageOutput",
+    "AttemptRecord", "StructuredError", "CostEstimate", "CompletionLedger",
+    "BudgetLedger", "request_fingerprint", "estimate_image_request_cost", "map_images",
+]
+__version__ = "0.3.0"
