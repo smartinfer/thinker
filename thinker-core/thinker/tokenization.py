@@ -7,7 +7,6 @@ and responses, supporting various tokenization methods.
 Author: Anjan Goswami
 """
 
-import tiktoken
 from typing import Dict, Any, List
 
 def count_tokens(request: Any) -> int:
