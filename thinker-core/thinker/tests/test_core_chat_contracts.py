@@ -76,6 +76,7 @@ def test_chat_ql_basic_request(mock_store, mock_pricebook):
             assert response.tokens["input"] == 5
             assert response.tokens["output"] == 3
             assert response.cost_usd == 0.001
+            mock_get_adapter.assert_called_once_with("local", None)
 
 def test_chat_ql_autoshrink_token_limit_exceeded(mock_store, mock_pricebook):
     """Test autoshrink when token limit is exceeded."""
@@ -211,14 +212,14 @@ def test_chat_ql_from_files():
                 mock_store = Mock()
                 mock_store_class.return_value = mock_store
                 mock_pricebook = Mock()
-                mock_pricebook_class.from_file.return_value = mock_pricebook
+                mock_pricebook_class.return_value = mock_pricebook
                 
-                thinker = Thinker.from_files("registry.yaml", "pricebook.yaml")
+                thinker = Thinker.from_files("registry.yaml")
                 
                 # Verify calls
                 mock_load_catalog.assert_called_once_with("registry.yaml")
                 mock_store.apply_catalog.assert_called_once_with(mock_catalog, "test_sha", "registry.yaml")
-                mock_pricebook_class.from_file.assert_called_once_with("pricebook.yaml")
+                mock_pricebook_class.assert_called_once_with()
                 
                 assert isinstance(thinker, Thinker)
                 assert thinker.store == mock_store

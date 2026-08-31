@@ -26,12 +26,12 @@ class Thinker:
         self.pricebook = pricebook
     
     @classmethod
-    def from_files(cls, registry_path: str, pricebook_path: str):
-        """Create Thinker instance from registry and pricebook files."""
+    def from_files(cls, registry_path: str):
+        """Create a Thinker instance from a registry file."""
         cat, sha = load_catalog(registry_path)
         store = RegistryStore()
         store.apply_catalog(cat, sha, registry_path)
-        pricebook = PriceBook.from_file(pricebook_path)
+        pricebook = PriceBook()
         return cls(store, pricebook)
     
     def chat_ql(self, ql: Dict[str, Any]):
@@ -79,7 +79,7 @@ class Thinker:
                     break
             
             # Get adapter and make the call
-            adapter = get_adapter(call.adapter)
+            adapter = get_adapter(call.adapter, call.endpoint)
             resp = adapter.chat(req, call)
             
             # Calculate cost
@@ -125,8 +125,8 @@ class Thinker:
             )
             raise
 
-def get_adapter(name: str):
+def get_adapter(name: str, endpoint: str | None = None):
     """Get adapter by name."""
     # This will be implemented in Task D
     from .adapters import get_adapter as _get_adapter
-    return _get_adapter(name)
+    return _get_adapter(name, endpoint)

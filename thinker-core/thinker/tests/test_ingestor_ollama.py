@@ -50,7 +50,7 @@ def test_ingest_success():
         assert llama_call.limits.max_output_tokens == 1024
         assert llama_call.price.input_per_1k == 0.0
         assert llama_call.price.output_per_1k == 0.0
-        assert llama_call.adapter == "local"
+        assert llama_call.adapter == "ollama"
         assert llama_call.payload_style == "ollama_chat"
         assert llama_call.endpoint == "http://localhost:11434/api/chat"
         

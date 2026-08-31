@@ -33,3 +33,16 @@ calls:
     price: { input_per_1k: 0.0, output_per_1k: 0.0 }
     adapter: "local"
     payload_style: "echo"
+
+  - call_id: "mlx:qwen2-5-0-5b-instruct-4bit.chat"
+    provider: "mlx"
+    model_id: "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+    kind: "chat"
+    modality: "text"
+    caps: []
+    limits: { max_input_tokens: 32768, max_output_tokens: 4096 }
+    price: { input_per_1k: 0.0, output_per_1k: 0.0 }
+    adapter: "openai"
+    payload_style: "chat_completions_v1"
+    endpoint: "http://127.0.0.1:8080"
+    aliases: ["local:mlx"]

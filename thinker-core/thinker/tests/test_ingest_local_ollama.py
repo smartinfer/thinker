@@ -14,6 +14,10 @@ from unittest.mock import patch, Mock
 from thinker.registry.ingestors.local_ollama import ingest
 from thinker.registry.store import RegistryStore
 from thinker.registry.resolver import resolve_call
+from thinker.adapters import get_adapter
+from thinker.adapters.base import AdapterResponse
+from thinker.adapters.ollama import OllamaAdapter
+from thinker.thinkerql.parse import InternalRequest
 
 def test_ingest_local_ollama_success():
     """Test successful Ollama ingestion with mocked response."""
@@ -40,7 +44,7 @@ def test_ingest_local_ollama_success():
         assert llama_call.kind == "chat"
         assert llama_call.modality == "text"
         assert "json_mode" in llama_call.caps
-        assert llama_call.adapter == "local"
+        assert llama_call.adapter == "ollama"
         assert llama_call.payload_style == "ollama_chat"
         assert llama_call.endpoint == "http://localhost:11434/api/chat"
 
@@ -92,3 +96,30 @@ def test_ollama_integration_with_store():
         assert call.call_id == "local:llama2.chat"
         assert call.provider == "local"
         assert call.model_id == "llama2"
+
+        adapter = get_adapter(call.adapter, call.endpoint)
+        assert isinstance(adapter, OllamaAdapter)
+        assert adapter._chat_url() == "http://localhost:11434/api/chat"
+
+        request = InternalRequest(
+            messages=[{"role": "user", "parts": [{"type": "text", "text": "hello"}]}],
+            documents=[],
+            instructions={},
+            routing={},
+            need_modality="text",
+            need_caps=[],
+            intent="chat",
+        )
+        ollama_response = Mock()
+        ollama_response.status_code = 200
+        ollama_response.json.return_value = {
+            "message": {"content": "hello back"},
+            "prompt_eval_count": 1,
+            "eval_count": 2,
+        }
+        with patch("httpx.Client.post", return_value=ollama_response) as mock_post:
+            response = adapter.chat(request, call)
+
+        mock_post.assert_called_once_with("http://localhost:11434/api/chat", json=mock_post.call_args.kwargs["json"])
+        assert isinstance(response, AdapterResponse)
+        assert not isinstance(response, Mock)

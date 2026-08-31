@@ -27,7 +27,7 @@ def ingest(base_url: str = "http://localhost:11434") -> Catalog:
             caps=["json_mode"],
             limits=Limits(max_input_tokens=8192, max_output_tokens=1024),
             price=Price(input_per_1k=0.0, output_per_1k=0.0),
-            adapter="local", payload_style="ollama_chat",
+            adapter="ollama", payload_style="ollama_chat",
             endpoint=f"{base_url}/api/chat"
         ))
     return Catalog(calls=calls)
