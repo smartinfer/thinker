@@ -7,9 +7,8 @@ prefixed with "echo:" for testing and development purposes.
 Author: Anjan Goswami
 """
 
-from typing import Dict, Any
-from unittest.mock import Mock
-from .base import BaseAdapter
+from typing import Any
+from .base import AdapterResponse, BaseAdapter
 
 class LocalEchoAdapter(BaseAdapter):
     """Local echo adapter for testing."""
@@ -26,22 +25,18 @@ class LocalEchoAdapter(BaseAdapter):
                         break
                 break
         
-        # Create response object
-        response = Mock()
-        response.text = f"echo:{last_user_text}"
+        response_text = f"echo:{last_user_text}"
         
         # Estimate tokens properly
         input_tokens = self._estimate_tokens(request)
-        output_tokens = len(response.text.split())  # Count words in response
-        
-        response.tokens = {
-            "input": input_tokens,
-            "output": output_tokens
-        }
-        response.model = call.model_id
-        response.provider = call.provider
-        
-        return response
+        output_tokens = len(response_text.split())  # Count words in response
+
+        return AdapterResponse(
+            text=response_text,
+            tokens={"input": input_tokens, "output": output_tokens},
+            model=call.model_id,
+            provider=call.provider,
+        )
     
     def _estimate_tokens(self, content: Any) -> int:
         """Estimate token count for content."""

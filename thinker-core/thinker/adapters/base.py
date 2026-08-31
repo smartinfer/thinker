@@ -8,7 +8,20 @@ Author: Anjan Goswami
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+@dataclass
+class AdapterResponse:
+    """Normalized production response returned by provider adapters."""
+
+    text: str
+    tokens: Dict[str, int]
+    model: str
+    provider: str
+    cost_usd: float = 0.0
+    autoshrink_trace: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
 
 class BaseAdapter(ABC):
     """Base class for all provider adapters."""

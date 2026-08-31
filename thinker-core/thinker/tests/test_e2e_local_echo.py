@@ -13,6 +13,7 @@ from thinker.core import Thinker
 from thinker.registry.store import RegistryStore
 from thinker.registry.schema import RegistryCall, Limits, Price
 from thinker.pricebook import PriceBook
+from thinker.adapters.base import AdapterResponse
 
 @pytest.fixture
 def echo_store():
@@ -58,6 +59,8 @@ def test_e2e_local_echo_basic(echo_store, pricebook):
     
     response = thinker.chat_ql(ql)
     
+    assert isinstance(response, AdapterResponse)
+    assert not isinstance(response, Mock)
     assert response.text == "echo:Hello, world!"
     assert response.model == "echo"
     assert response.provider == "local"

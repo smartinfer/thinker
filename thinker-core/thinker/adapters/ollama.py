@@ -10,9 +10,8 @@ Author: Anjan Goswami
 import os
 from typing import Any, Dict, List
 import httpx
-from unittest.mock import Mock
 
-from .base import BaseAdapter
+from .base import AdapterResponse, BaseAdapter
 
 
 class OllamaAdapter(BaseAdapter):
@@ -20,7 +19,12 @@ class OllamaAdapter(BaseAdapter):
 
     def __init__(self, base_url: str | None = None):
         # Prefer 127.0.0.1 to avoid some resolver delays on localhost
-        self.base_url = base_url or os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434")
+        self.base_url = (base_url or os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434")).rstrip("/")
+
+    def _chat_url(self) -> str:
+        if self.base_url.endswith("/api/chat"):
+            return self.base_url
+        return f"{self.base_url}/api/chat"
 
     def _convert_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
         """Convert ThinkerQL-style messages to Ollama's role/content format."""
@@ -63,7 +67,7 @@ class OllamaAdapter(BaseAdapter):
         if num_gpu_val is not None and num_gpu_val >= 0:
             payload["options"]["num_gpu"] = num_gpu_val
 
-        url = f"{self.base_url}/api/chat"
+        url = self._chat_url()
         # Large models can take time on first load; allow longer timeout or env override
         timeout_s = float(os.getenv("OLLAMA_TIMEOUT", "300"))
         with httpx.Client(timeout=timeout_s) as client:
@@ -78,14 +82,9 @@ class OllamaAdapter(BaseAdapter):
         input_tokens = int(data.get("prompt_eval_count", 0) or 0)
         output_tokens = int(data.get("eval_count", 0) or 0)
 
-        result = Mock()
-        result.text = content
-        result.tokens = {"input": input_tokens, "output": output_tokens}
-        result.model = call.model_id
-        result.provider = call.provider
-        result.cost_usd = 0.0  # local models assumed $0
-        result.autoshrink_trace = None
-        result.error = None
-        return result
-
-
+        return AdapterResponse(
+            text=content,
+            tokens={"input": input_tokens, "output": output_tokens},
+            model=call.model_id,
+            provider=call.provider,
+        )

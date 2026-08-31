@@ -12,6 +12,8 @@ from unittest.mock import Mock, patch
 import os
 import respx
 import httpx
+from thinker.adapters import get_adapter
+from thinker.adapters.base import AdapterResponse
 from thinker.adapters.openai import OpenaiAdapter
 from thinker.thinkerql.parse import InternalRequest
 from thinker.registry.schema import RegistryCall, Limits, Price
@@ -71,11 +73,44 @@ def test_openai_adapter_basic_text(mock_call, mock_request):
             
             response = adapter.chat(mock_request, mock_call)
             
+            assert not isinstance(response, Mock)
+            assert isinstance(response, AdapterResponse)
             assert response.text == "Hello! How can I help you?"
             assert response.tokens["input"] == 10
             assert response.tokens["output"] == 8
             assert response.model == "gpt-4o-mini"
             assert response.provider == "openai"
+
+def test_openai_adapter_uses_custom_endpoint_without_api_key(mock_call, mock_request):
+    """A registry endpoint reaches an OpenAI-compatible local server."""
+    adapter = OpenaiAdapter("http://127.0.0.1:8080")
+
+    with patch.dict('os.environ', {}, clear=True):
+        with respx.mock:
+            route = respx.post("http://127.0.0.1:8080/v1/chat/completions").mock(
+                return_value=httpx.Response(
+                    200,
+                    json={
+                        "choices": [{"message": {"content": "local response"}}],
+                        "usage": {"prompt_tokens": 3, "completion_tokens": 2},
+                    },
+                )
+            )
+
+            response = adapter.chat(mock_request, mock_call)
+
+            assert route.called
+            assert "authorization" not in route.calls[0].request.headers
+            assert response.text == "local response"
+
+def test_get_adapter_creates_fresh_endpoint_scoped_instances():
+    """Adapter instances and endpoint state are scoped to one call."""
+    first = get_adapter("openai", "http://127.0.0.1:8080")
+    second = get_adapter("openai", "http://127.0.0.1:9090")
+
+    assert first is not second
+    assert first.base_url == "http://127.0.0.1:8080"
+    assert second.base_url == "http://127.0.0.1:9090"
 
 def test_openai_adapter_image_mapping(mock_call):
     """Test image message mapping to OpenAI format."""

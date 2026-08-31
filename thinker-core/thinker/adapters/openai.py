@@ -8,17 +8,20 @@ Author: Anjan Goswami
 """
 
 import httpx
-import json
 from typing import Dict, Any, List
-from unittest.mock import Mock
-from .base import BaseAdapter
+from .base import AdapterResponse, BaseAdapter
 
 class OpenaiAdapter(BaseAdapter):
     """OpenAI adapter for chat completions."""
     
-    def __init__(self, base_url: str = "https://api.openai.com"):
+    def __init__(self, base_url: str | None = None):
         """Initialize OpenAI adapter."""
-        self.base_url = base_url
+        self.base_url = (base_url or "https://api.openai.com").rstrip("/")
+
+    def _chat_url(self) -> str:
+        if self.base_url.endswith("/v1/chat/completions"):
+            return self.base_url
+        return f"{self.base_url}/v1/chat/completions"
     
     def chat(self, request: Any, call: Any) -> Any:
         """Process chat request with OpenAI API."""
@@ -38,11 +41,14 @@ class OpenaiAdapter(BaseAdapter):
             payload["response_format"] = {"type": "json_object"}
         
         # Make API call
+        headers = {}
+        if self.base_url == "https://api.openai.com":
+            headers["Authorization"] = f"Bearer {self._get_api_key()}"
         with httpx.Client() as client:
             response = client.post(
-                f"{self.base_url}/v1/chat/completions",
+                self._chat_url(),
                 json=payload,
-                headers={"Authorization": f"Bearer {self._get_api_key()}"},
+                headers=headers,
                 timeout=30.0
             )
             
@@ -55,17 +61,15 @@ class OpenaiAdapter(BaseAdapter):
             choice = data["choices"][0]
             usage = data["usage"]
             
-            # Create response object
-            result = Mock()
-            result.text = choice["message"]["content"]
-            result.tokens = {
-                "input": usage["prompt_tokens"],
-                "output": usage["completion_tokens"]
-            }
-            result.model = call.model_id
-            result.provider = call.provider
-            
-            return result
+            return AdapterResponse(
+                text=choice["message"]["content"],
+                tokens={
+                    "input": usage["prompt_tokens"],
+                    "output": usage["completion_tokens"],
+                },
+                model=call.model_id,
+                provider=call.provider,
+            )
     
     def _convert_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert ThinkerQL messages to OpenAI format."""
@@ -93,7 +97,7 @@ class OpenaiAdapter(BaseAdapter):
         
         return openai_messages
     
-    def _get_api_key(self) -> str:
+    def _get_api_key(self, required: bool = True) -> str | None:
         """Get OpenAI API key from env or Thinker secure storage."""
         import os
         key = os.getenv("OPENAI_API_KEY")
@@ -111,6 +115,6 @@ class OpenaiAdapter(BaseAdapter):
                 key = Credentials().get("openai")
             except Exception:
                 key = None
-        if not key:
+        if not key and required:
             raise Exception("OPENAI_API_KEY environment variable not set")
         return key
