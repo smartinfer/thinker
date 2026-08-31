@@ -99,6 +99,17 @@ def test_cli_chat_ql_command(temp_registry_file, temp_ql_file):
                 assert "echo" in output
                 assert "local" in output
 
+def test_cli_chat_ql_rejects_removed_pricebook_argument(temp_registry_file, temp_ql_file):
+    """Registry pricing is authoritative; the retired pricebook flag is not accepted."""
+    with patch('sys.argv', [
+        'thinker', 'chat-ql',
+        '--registry', temp_registry_file,
+        '--pricebook', 'unused.json',
+        '--ql', temp_ql_file,
+    ]):
+        with pytest.raises(SystemExit):
+            main()
+
 def test_cli_map_chat_ql_command(temp_registry_file):
     """Test map-chat-ql CLI command."""
     # Create multiple QL files
