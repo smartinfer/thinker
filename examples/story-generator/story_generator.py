@@ -56,7 +56,7 @@ def init_thinker_for_local(agent_model: str, story_model: str, ollama_endpoint: 
     catalog = _make_local_catalog(agent_model, story_model, ollama_endpoint)
     store = RegistryStore()
     store.apply_catalog(catalog, version_id="local-ollama", source="story-generator")
-    pricebook = PriceBook.from_file("dummy_path")
+    pricebook = PriceBook()
     # Return sanitized call_ids that match those stored in the catalog
     sanitized_agent = agent_model.replace(':','-').replace('.', '-')
     sanitized_story = story_model.replace(':','-').replace('.', '-')
@@ -217,5 +217,4 @@ def save_story(story: str, requirements: Dict[str, Any], metadata: Dict[str, Any
 
 def load_config(config_path: str | Path) -> Dict[str, Any]:
     return yaml.safe_load(Path(config_path).read_text())
-
 

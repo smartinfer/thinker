@@ -160,10 +160,10 @@ print(f"Response: {response.text}")
 python -m thinker.cli registry-validate spec/registry.yaml
 
 # Process single request
-python -m thinker.cli chat-ql --registry spec/registry.yaml --pricebook spec/pricebook.yaml --ql examples/01_text_chat_ql.yaml
+python -m thinker.cli chat-ql --registry spec/registry.yaml --ql examples/01_text_chat_ql.yaml
 
 # Process batch requests
-python -m thinker.cli map-chat-ql --registry spec/registry.yaml --pricebook spec/pricebook.yaml --ql-glob "examples/*.yaml" --budget-usd 0.05
+python -m thinker.cli map-chat-ql --registry spec/registry.yaml --ql-glob "examples/*.yaml" --budget-usd 0.05
 ```
 
 ### Batch Processing

@@ -134,7 +134,7 @@ def main():
 
     # Provider selection
     if provider == "openai":
-        thinker = Thinker.from_files("../../spec/registry.yaml", "../../spec/pricebook.yaml")
+        thinker = Thinker.from_files("../../spec/registry.yaml")
         agent_route = {"model": openai_model}
         story_model_openai = openai_model
         use_openai = True
@@ -254,5 +254,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         sys.exit(0)
-
 

@@ -136,8 +136,8 @@ thinker registry-get <call_id>  # Get model details
 
 ### Chat Operations
 ```bash
-thinker chat-ql --registry <file> --pricebook <file> --ql <file>
-thinker map-chat-ql --registry <file> --pricebook <file> --ql-glob <pattern>
+thinker chat-ql --registry <file> --ql <file>
+thinker map-chat-ql --registry <file> --ql-glob <pattern>
 ```
 
 ## Key Features

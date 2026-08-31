@@ -271,7 +271,7 @@ If the dashboard shows no data:
 
 3. **Make a test request**:
    ```bash
-   thinker chat-ql --registry spec/registry.yaml --pricebook spec/pricebook.yaml --ql examples/01_text_chat_ql.yaml
+   thinker chat-ql --registry spec/registry.yaml --ql examples/01_text_chat_ql.yaml
    ```
 
 ### Performance Issues
