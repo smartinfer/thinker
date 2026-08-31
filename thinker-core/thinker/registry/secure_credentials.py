@@ -171,7 +171,7 @@ class SecureCredentials:
         # Remove duplicates and sort
         return sorted(list(set(providers)))
     
-    def test_key(self, provider: str) -> tuple[bool, str]:
+    def test_key(self, provider: str, key: Optional[str] = None) -> tuple[bool, str]:
         """
         Test if a stored key works by making a test API call.
         
@@ -181,7 +181,7 @@ class SecureCredentials:
         Returns:
             (success, message) tuple
         """
-        key = self.get(provider)
+        key = key or self.get(provider)
         if not key:
             return False, f"No key found for provider: {provider}"
         

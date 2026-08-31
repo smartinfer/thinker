@@ -37,7 +37,8 @@ def test_credentials_from_file():
         "anthropic": {"api_key": "sk-file-anthropic-key"}
     }
     
-    with patch("pathlib.Path.exists", return_value=True), \
+    with patch.dict(os.environ, {}, clear=True), \
+         patch("pathlib.Path.exists", return_value=True), \
          patch("pathlib.Path.read_text", return_value='{"openai": {"api_key": "sk-file-openai-key"}, "anthropic": {"api_key": "sk-file-anthropic-key"}}'):
         
         creds = Credentials("secrets.json")
@@ -46,7 +47,8 @@ def test_credentials_from_file():
 
 def test_credentials_file_not_exists():
     """Test credentials when file doesn't exist."""
-    with patch("pathlib.Path.exists", return_value=False):
+    with patch.dict(os.environ, {}, clear=True), \
+         patch("pathlib.Path.exists", return_value=False):
         creds = Credentials("nonexistent.json")
         assert creds.get("openai") is None
 

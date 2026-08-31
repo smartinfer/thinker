@@ -15,6 +15,7 @@ from thinker.registry.secure_credentials import SecureCredentials, prompt_for_ke
 from thinker.core import Thinker
 from thinker.primitives import map_chat
 from thinker.observability.dashboard import Dashboard
+from thinker.config import get_config
 
 def main():
     """Main CLI entry point."""
@@ -47,12 +48,10 @@ def main():
     # Chat commands
     c5 = sub.add_parser("chat-ql")
     c5.add_argument("--registry", required=True, help="Registry YAML file")
-    c5.add_argument("--pricebook", required=True, help="Pricebook JSON file")
     c5.add_argument("--ql", required=True, help="ThinkerQL YAML file")
 
     c6 = sub.add_parser("map-chat-ql")
     c6.add_argument("--registry", required=True, help="Registry YAML file")
-    c6.add_argument("--pricebook", required=True, help="Pricebook JSON file")
     c6.add_argument("--ql-glob", required=True, help="Glob pattern for ThinkerQL files")
     c6.add_argument("--budget-usd", type=float, help="Budget limit in USD")
 
@@ -80,7 +79,11 @@ def main():
     
     # Handle key management commands
     if args.cmd == "keys":
-        creds = SecureCredentials()
+        config = get_config()
+        creds = SecureCredentials(
+            storage_type=config.credentials_storage_type,
+            keystore_path=config.keystore_path,
+        )
         
         if args.keys_cmd == "set":
             provider = input("Provider (openai, anthropic, google, together, mistral): ").strip().lower()
@@ -140,18 +143,17 @@ def main():
                 
                 print(f"Current key for {provider} is working. Enter new key:")
                 new_key = prompt_for_key(provider)
-                
-                if creds.set(provider, new_key):
-                    # Test new key
-                    success, message = creds.test_key(provider)
-                    if success:
+
+                # Validate the candidate without replacing the stored key.
+                success, message = creds.test_key(provider, new_key)
+                if success:
+                    if creds.set(provider, new_key):
                         print(f"✅ Key rotated successfully for {provider}")
                     else:
-                        print(f"❌ New key test failed: {message}")
-                        print("Reverting to old key...")
-                        # Note: In a real implementation, you'd want to store the old key temporarily
+                        print(f"❌ Failed to store new key for {provider}")
                 else:
-                    print(f"❌ Failed to store new key for {provider}")
+                    print(f"❌ New key test failed: {message}")
+                    print("Original key was not changed")
             except Exception as e:
                 print(f"❌ Error: {e}")
             return
@@ -182,7 +184,7 @@ def main():
             ql_data = yaml.safe_load(f)
         
         # Create Thinker instance
-        thinker = Thinker.from_files(args.registry, args.pricebook)
+        thinker = Thinker.from_files(args.registry)
         
         # Process request
         response = thinker.chat_ql(ql_data)
@@ -210,7 +212,7 @@ def main():
                 ql_requests.append(ql_data)
         
         # Create Thinker instance
-        thinker = Thinker.from_files(args.registry, args.pricebook)
+        thinker = Thinker.from_files(args.registry)
         
         # Process requests
         try:

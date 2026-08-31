@@ -71,12 +71,11 @@ def temp_ql_file():
         yaml.dump(ql_data, f)
         return f.name
 
-def test_cli_chat_ql_command(temp_registry_file, temp_pricebook_file, temp_ql_file):
+def test_cli_chat_ql_command(temp_registry_file, temp_ql_file):
     """Test chat-ql CLI command."""
     with patch('sys.argv', [
         'thinker', 'chat-ql',
         '--registry', temp_registry_file,
-        '--pricebook', temp_pricebook_file,
         '--ql', temp_ql_file
     ]):
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
@@ -100,7 +99,7 @@ def test_cli_chat_ql_command(temp_registry_file, temp_pricebook_file, temp_ql_fi
                 assert "echo" in output
                 assert "local" in output
 
-def test_cli_map_chat_ql_command(temp_registry_file, temp_pricebook_file):
+def test_cli_map_chat_ql_command(temp_registry_file):
     """Test map-chat-ql CLI command."""
     # Create multiple QL files
     ql_files = []
@@ -126,7 +125,6 @@ def test_cli_map_chat_ql_command(temp_registry_file, temp_pricebook_file):
         with patch('sys.argv', [
             'thinker', 'map-chat-ql',
             '--registry', temp_registry_file,
-            '--pricebook', temp_pricebook_file,
             '--ql-glob', '*.yaml',
             '--budget-usd', '0.05'
         ]):
@@ -195,8 +193,49 @@ def test_cli_registry_list_command(temp_registry_file):
     ]):
         with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
             main()
-            
+
             # Verify it runs (empty output is expected since no registry is loaded)
             output = mock_stdout.getvalue()
             # Should be empty since no registry is loaded
             assert output == ""
+
+def test_cli_keys_rotate_preserves_original_when_candidate_fails():
+    """A failed candidate key must never replace the stored key."""
+    class FakeCredentials:
+        def __init__(self):
+            self.keys = {"openai": "original-value"}
+
+        def test_key(self, provider, key=None):
+            if key == "candidate-value":
+                return False, "candidate is invalid"
+            return True, "current key is valid"
+
+        def set(self, provider, key):
+            self.keys[provider] = key
+            return True
+
+    creds = FakeCredentials()
+    config = Mock(credentials_storage_type="auto", keystore_path="/tmp/test-keystore")
+    with patch("sys.argv", ["thinker", "keys", "rotate"]), \
+         patch("builtins.input", return_value="openai"), \
+         patch("thinker.cli.prompt_for_key", return_value="candidate-value"), \
+         patch("thinker.cli.get_config", return_value=config), \
+         patch("thinker.cli.SecureCredentials", return_value=creds):
+        main()
+
+    assert creds.keys["openai"] == "original-value"
+
+def test_cli_keys_honors_configured_credential_storage():
+    """CLI credential commands use the configured storage backend and path."""
+    config = Mock(credentials_storage_type="encrypted_file", keystore_path="/tmp/test-keystore")
+    creds = Mock()
+    creds.list_providers.return_value = []
+    with patch("sys.argv", ["thinker", "keys", "list"]), \
+         patch("thinker.cli.get_config", return_value=config), \
+         patch("thinker.cli.SecureCredentials", return_value=creds) as credentials_class:
+        main()
+
+    credentials_class.assert_called_once_with(
+        storage_type="encrypted_file",
+        keystore_path="/tmp/test-keystore",
+    )

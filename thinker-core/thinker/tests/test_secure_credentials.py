@@ -154,7 +154,11 @@ class TestSecureCredentials:
             
             # Test with invalid key
             creds.set("openai", "sk-invalid-key")
-            success, message = creds.test_key("openai")
+            with patch(
+                "thinker.registry.auth._test_provider_key",
+                return_value=(False, "OpenAI key is invalid"),
+            ):
+                success, message = creds.test_key("openai")
             assert not success
             assert "invalid" in message.lower() or "error" in message.lower()
     
