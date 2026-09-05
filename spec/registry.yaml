@@ -5,7 +5,7 @@ calls:
     model_id: "gpt-4o-mini"
     kind: "chat"
     modality: "multimodal"
-    caps: ["json_mode","tools","images_in"]
+    caps: ["json_mode","json_schema","tools","images_in"]
     limits: { max_input_tokens: 128000, max_output_tokens: 16384 }
     price: { input_per_1k: 0.00015, output_per_1k: 0.00060 }
     adapter: "openai"
