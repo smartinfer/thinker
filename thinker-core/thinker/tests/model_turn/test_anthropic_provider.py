@@ -67,6 +67,7 @@ def test_anthropic_maps_tools_results_schema_identity_and_usage(fake_call):
     payload = json.loads(route.calls[0].request.content)
     assert payload["system"] == "system"
     assert payload["tools"][0]["input_schema"]["type"] == "object"
+    assert "strict" not in payload["tools"][0]
     assert payload["tools"][0]["input_schema"]["required"] == ["path"]
     assert payload["tools"][0]["input_schema"]["properties"]["start_line"]["type"] == "integer"
     assert payload["messages"][-1]["content"][0]["tool_use_id"] == "prior"

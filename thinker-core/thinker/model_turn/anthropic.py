@@ -103,7 +103,6 @@ class AnthropicModelTurnProvider:
                     "name": tool.name,
                     "description": tool.description,
                     "input_schema": _anthropic_tool_schema(tool.input_schema),
-                    "strict": tool.strict,
                 }
                 for tool in request.tools
             ]
