@@ -122,6 +122,44 @@ def test_openai_strict_structured_output_payload(fake_call):
 
 
 @respx.mock
+def test_openai_valid_schema_outside_native_subset_falls_back_to_json_mode(fake_call):
+    route = respx.post("https://api.openai.com/v1/responses").mock(
+        side_effect=[
+            httpx.Response(
+                400,
+                json={"error": {"code": "invalid_json_schema", "message": "unsupported"}},
+            ),
+            httpx.Response(
+                200,
+                json=openai_response(
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": '{"status":"ok"}'}],
+                    }
+                ),
+            ),
+        ]
+    )
+    provider = OpenAIModelTurnProvider(credential_resolver=lambda _: "secret")
+    provider.turn(
+        make_request(
+            response_schema={
+                "type": "object",
+                "properties": {"status": {"const": "ok"}},
+                "required": ["status"],
+                "additionalProperties": False,
+            }
+        ),
+        fake_call,
+        Event(),
+    )
+    assert len(route.calls) == 2
+    fallback = json.loads(route.calls[1].request.content)
+    assert fallback["text"]["format"] == {"type": "json_object"}
+    assert '"const":"ok"' in fallback["instructions"]
+
+
+@respx.mock
 def test_openai_malformed_tool_arguments_are_typed(fake_call):
     respx.post("https://api.openai.com/v1/responses").mock(
         return_value=httpx.Response(

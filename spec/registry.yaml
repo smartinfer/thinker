@@ -5,7 +5,7 @@ calls:
     model_id: "gpt-4o-mini"
     kind: "chat"
     modality: "multimodal"
-    caps: ["json_mode","json_schema","tools","images_in"]
+    caps: ["model_turn_v1","json_mode","json_schema","tools","multiple_tool_calls","tool_result_continuation","provider_continuation","images_in"]
     limits: { max_input_tokens: 128000, max_output_tokens: 16384 }
     price: { input_per_1k: 0.00015, output_per_1k: 0.00060 }
     adapter: "openai"
@@ -23,12 +23,36 @@ calls:
     adapter: "openai"
     payload_style: "embeddings_v1"
 
+  - call_id: "anthropic:claude-haiku-4-5-20251001.chat"
+    provider: "anthropic"
+    model_id: "claude-haiku-4-5-20251001"
+    kind: "chat"
+    modality: "text"
+    caps: ["model_turn_v1","json_mode","json_schema","tools","multiple_tool_calls","tool_result_continuation"]
+    limits: { max_input_tokens: 200000, max_output_tokens: 64000 }
+    price: { input_per_1k: 0.001, output_per_1k: 0.005 }
+    adapter: "anthropic"
+    payload_style: "messages_v1"
+    aliases: ["anthropic:alpha"]
+
+  - call_id: "gemini:gemini-2-5-flash.chat"
+    provider: "gemini"
+    model_id: "gemini-2.5-flash"
+    kind: "chat"
+    modality: "multimodal"
+    caps: ["model_turn_v1","json_mode","json_schema","tools","multiple_tool_calls","tool_result_continuation","provider_continuation","images_in"]
+    limits: { max_input_tokens: 1048576, max_output_tokens: 65536 }
+    price: { input_per_1k: 0.0003, output_per_1k: 0.0025 }
+    adapter: "gemini"
+    payload_style: "generateContent_v1beta"
+    aliases: ["gemini:alpha"]
+
   - call_id: "local:echo.chat"
     provider: "local"
     model_id: "echo"
     kind: "chat"
     modality: "text"
-    caps: ["json_mode"]
+    caps: ["model_turn_v1","json_mode","json_schema","tools","multiple_tool_calls","tool_result_continuation"]
     limits: { max_input_tokens: 8192, max_output_tokens: 1024 }
     price: { input_per_1k: 0.0, output_per_1k: 0.0 }
     adapter: "local"
@@ -39,10 +63,10 @@ calls:
     model_id: "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
     kind: "chat"
     modality: "text"
-    caps: []
+    caps: ["model_turn_v1"]
     limits: { max_input_tokens: 32768, max_output_tokens: 4096 }
     price: { input_per_1k: 0.0, output_per_1k: 0.0 }
-    adapter: "openai"
+    adapter: "openai_compatible_local"
     payload_style: "chat_completions_v1"
     endpoint: "http://127.0.0.1:8080"
     aliases: ["local:mlx"]

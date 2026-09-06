@@ -5,6 +5,7 @@ import time
 
 import httpx
 
+from thinker.model_turn.models import ToolDefinition
 from thinker.model_turn.service import RunningModelTurnServer
 
 from .conftest import make_request
@@ -51,7 +52,24 @@ def test_server_tool_loop_and_structured_output(runtime):
         RunningModelTurnServer(runtime) as server,
         httpx.Client(base_url=server.base_url) as client,
     ):
-        tools = post(client, make_request("multiple_tool_calls"))
+        tools = post(
+            client,
+            make_request(
+                "multiple_tool_calls",
+                tools=(
+                    ToolDefinition(
+                        name="read_file",
+                        description="Read",
+                        input_schema={"type": "object", "additionalProperties": True},
+                    ),
+                    ToolDefinition(
+                        name="run_tests",
+                        description="Test",
+                        input_schema={"type": "object", "additionalProperties": True},
+                    ),
+                ),
+            ),
+        )
         structured = post(
             client,
             make_request(

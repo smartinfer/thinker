@@ -8,9 +8,8 @@ limits, capabilities, and pricing information.
 Author: Anjan Goswami
 """
 
-import httpx
-from ..schema import Catalog, RegistryCall, Limits, Price
 from ..auth import Credentials, anthropic_client
+from ..schema import Catalog, Limits, Price, RegistryCall
 
 # Model metadata with limits, capabilities, and pricing
 META = {
@@ -18,30 +17,38 @@ META = {
         "kind": "chat",
         "modality": "text",
         "limits": Limits(max_input_tokens=200000, max_output_tokens=8192),
-        "caps": ["json_mode", "tools"],
+        "caps": [
+            "model_turn_v1",
+            "json_mode",
+            "json_schema",
+            "tools",
+            "multiple_tool_calls",
+            "tool_result_continuation",
+        ],
         "price": Price(input_per_1k=0.003, output_per_1k=0.015),
-        "payload_style": "messages_v1"
+        "payload_style": "messages_v1",
     }
 }
+
 
 def ingest_models(creds: Credentials) -> Catalog:
     """Ingest Anthropic models and return normalized Catalog."""
     calls = []
-    
+
     with anthropic_client(creds) as client:
         response = client.get("/v1/models")
-        
+
         if response.status_code == 401:
             raise RuntimeError("Unauthorized to Anthropic /v1/models")
-        
+
         response.raise_for_status()
-        
+
         for model in response.json().get("data", []):
             model_id = model.get("id")
-            
+
             if model_id in META:
                 meta = META[model_id]
-                
+
                 call = RegistryCall(
                     call_id=f"anthropic:{model_id}.{meta['kind']}",
                     provider="anthropic",
@@ -53,9 +60,9 @@ def ingest_models(creds: Credentials) -> Catalog:
                     price=meta["price"],
                     adapter="anthropic",
                     payload_style=meta["payload_style"],
-                    aliases=["anthropic:sonnet-cheap"]
+                    aliases=["anthropic:sonnet-cheap"],
                 )
-                
+
                 calls.append(call)
-    
+
     return Catalog(calls=calls)

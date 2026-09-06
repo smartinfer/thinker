@@ -1,0 +1,105 @@
+protocol: thinker.model-turn.v1
+status_values:
+  - IMPLEMENTED
+  - FAKE_TESTED
+  - MOCK_TESTED
+  - REAL_TESTED
+  - UNSUPPORTED
+families:
+  openai-responses:
+    provider_identities: [openai]
+    transport_adapter: openai
+    capabilities:
+      text: REAL_TESTED
+      structured_output: REAL_TESTED
+      one_tool_call: REAL_TESTED
+      multiple_tool_calls: MOCK_TESTED
+      tool_result_continuation: REAL_TESTED
+      provider_continuation: REAL_TESTED
+      timeout: MOCK_TESTED
+      cancellation: FAKE_TESTED
+      usage: REAL_TESTED
+      model_identity: REAL_TESTED
+      normalized_errors: MOCK_TESTED
+  anthropic-messages:
+    provider_identities: [anthropic]
+    transport_adapter: anthropic
+    capabilities:
+      text: REAL_TESTED
+      structured_output: REAL_TESTED
+      one_tool_call: REAL_TESTED
+      multiple_tool_calls: MOCK_TESTED
+      tool_result_continuation: REAL_TESTED
+      provider_continuation: UNSUPPORTED
+      timeout: MOCK_TESTED
+      cancellation: FAKE_TESTED
+      usage: REAL_TESTED
+      model_identity: REAL_TESTED
+      normalized_errors: MOCK_TESTED
+  gemini-native:
+    provider_identities: [gemini]
+    transport_adapter: gemini
+    capabilities:
+      text: REAL_TESTED
+      structured_output: REAL_TESTED
+      one_tool_call: REAL_TESTED
+      multiple_tool_calls: MOCK_TESTED
+      tool_result_continuation: REAL_TESTED
+      provider_continuation: REAL_TESTED
+      timeout: MOCK_TESTED
+      cancellation: FAKE_TESTED
+      usage: REAL_TESTED
+      model_identity: REAL_TESTED
+      normalized_errors: MOCK_TESTED
+  openai-compatible:
+    provider_identities: []
+    mock_representative_identity: deepseek
+    transport_adapter: openai_compatible
+    capabilities:
+      text: MOCK_TESTED
+      structured_output: MOCK_TESTED
+      one_tool_call: MOCK_TESTED
+      multiple_tool_calls: MOCK_TESTED
+      tool_result_continuation: MOCK_TESTED
+      provider_continuation: UNSUPPORTED
+      timeout: IMPLEMENTED
+      cancellation: FAKE_TESTED
+      usage: MOCK_TESTED
+      model_identity: MOCK_TESTED
+      normalized_errors: MOCK_TESTED
+  ollama-native:
+    provider_identities: [ollama]
+    transport_adapter: ollama
+    capabilities:
+      text: REAL_TESTED
+      structured_output: REAL_TESTED
+      one_tool_call: MOCK_TESTED
+      multiple_tool_calls: MOCK_TESTED
+      tool_result_continuation: MOCK_TESTED
+      provider_continuation: MOCK_TESTED
+      timeout: MOCK_TESTED
+      cancellation: FAKE_TESTED
+      usage: REAL_TESTED
+      model_identity: REAL_TESTED
+      normalized_errors: MOCK_TESTED
+real_smokes:
+  openai:
+    model: gpt-4o-mini-2024-07-18
+    text: PASS
+    structured_output: PASS
+    tool_result_continuation: PASS
+  anthropic:
+    model: claude-haiku-4-5-20251001
+    text: PASS
+    structured_output: PASS
+    tool_result_continuation: PASS
+  gemini:
+    model: gemini-2.5-flash
+    text: PASS
+    structured_output: PASS
+    tool_result_continuation: PASS
+  ollama:
+    model: llama3.2:latest
+    text: PASS
+    structured_output: PASS
+    tool_result_continuation: NOT_EXERCISED

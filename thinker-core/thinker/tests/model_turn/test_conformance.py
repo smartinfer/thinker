@@ -9,9 +9,11 @@ from thinker.model_turn.errors import ModelTurnErrorCode
 from thinker.model_turn.models import (
     Continuation,
     ModelMessage,
+    ToolCall,
     ToolDefinition,
     ToolResult,
 )
+from thinker.model_turn.provider import ProviderTurnResult
 
 from .conftest import make_request
 
@@ -225,6 +227,67 @@ def test_route_and_model_provenance_and_cost(runtime):
     assert response.thinker_revision == "test-revision"
     assert response.usage.total_tokens == 10
     assert response.cost.amount == pytest.approx(0.000013)
+
+
+def test_known_model_without_v1_capability_fails_closed(fake_call):
+    from thinker.model_turn.runtime import ModelTurnRuntime
+    from thinker.registry.store import RegistryStore
+
+    store = RegistryStore()
+    store.put_call(fake_call.model_copy(update={"caps": []}))
+    response = ModelTurnRuntime(store).turn(make_request())
+    assert response.normalized_error.code == ModelTurnErrorCode.MODEL_UNAVAILABLE
+
+
+def test_tool_result_requires_continuation_capability(fake_call):
+    from thinker.model_turn.runtime import ModelTurnRuntime
+    from thinker.registry.store import RegistryStore
+
+    store = RegistryStore()
+    store.put_call(
+        fake_call.model_copy(
+            update={"caps": [cap for cap in fake_call.caps if cap != "tool_result_continuation"]}
+        )
+    )
+    response = ModelTurnRuntime(store).turn(
+        make_request(tool_results=(ToolResult(call_id="call-1", output="result"),))
+    )
+    assert response.normalized_error.code == ModelTurnErrorCode.MODEL_UNAVAILABLE
+
+
+def test_provider_tool_arguments_are_locally_validated(fake_call):
+    from thinker.model_turn.runtime import ModelTurnRuntime
+    from thinker.registry.store import RegistryStore
+
+    class InvalidArgumentsProvider:
+        def turn(self, request, call, cancel_event):
+            return ProviderTurnResult(
+                resolved_provider=call.provider,
+                resolved_model=call.model_id,
+                tool_calls=(ToolCall(call_id="bad", name="read", arguments={"path": 7}),),
+                finish_reason="tool_calls",
+            )
+
+    store = RegistryStore()
+    store.put_call(fake_call)
+    response = ModelTurnRuntime(
+        store, provider_factories={"fake": lambda _call: InvalidArgumentsProvider()}
+    ).turn(
+        make_request(
+            tools=(
+                ToolDefinition(
+                    name="read",
+                    description="Read",
+                    input_schema={
+                        "type": "object",
+                        "properties": {"path": {"type": "string"}},
+                        "required": ["path"],
+                    },
+                ),
+            )
+        )
+    )
+    assert response.normalized_error.code == ModelTurnErrorCode.TOOL_CALL_MALFORMED
 
 
 def test_observer_receives_metadata_but_no_content(fake_call):

@@ -19,10 +19,15 @@ from thinker.registry.resolver import resolve_call
 from thinker.registry.schema import RegistryCall
 from thinker.registry.store import RegistryStore
 
+from .anthropic import AnthropicModelTurnProvider
+from .capabilities import JSON_MODE, MODEL_TURN_V1, TOOL_RESULT_CONTINUATION, TOOLS
 from .errors import ModelTurnError, ModelTurnErrorCode, ModelTurnProviderException
 from .fake import FakeModelTurnProvider
+from .gemini import GeminiModelTurnProvider
 from .models import Cost, ModelTurnRequest, ModelTurnResponse, Usage, json_safe
+from .ollama import OllamaModelTurnProvider
 from .openai import OpenAIModelTurnProvider
+from .openai_compatible import OpenAICompatibleModelTurnProvider
 from .provider import ModelTurnProvider, ProviderTurnResult
 
 ProviderFactory = Callable[[RegistryCall], ModelTurnProvider]
@@ -153,6 +158,7 @@ class ModelTurnRuntime:
                     call,
                 )
 
+            self._validate_tool_calls(request, outcome)
             structured = self._validate_structured_output(request, outcome)
             cost = self.pricebook.cost(
                 call,
@@ -186,11 +192,13 @@ class ModelTurnRuntime:
                     self._active.pop(request.request_id, None)
 
     def _resolve(self, request: ModelTurnRequest) -> RegistryCall:
-        caps: list[str] = []
+        caps: list[str] = [MODEL_TURN_V1]
         if request.tools:
-            caps.append("tools")
+            caps.append(TOOLS)
+        if request.tool_results:
+            caps.append(TOOL_RESULT_CONTINUATION)
         if request.response_schema is not None:
-            caps.append("json_mode")
+            caps.append(JSON_MODE)
         if self.store.get_call(request.requested_route):
             return resolve_call(
                 self.store,
@@ -226,7 +234,19 @@ class ModelTurnRuntime:
         if factory:
             return factory(call)
         if call.adapter == "openai":
+            if call.provider != "openai":
+                raise ValueError("OpenAI native transport requires provider='openai'")
             return OpenAIModelTurnProvider(call.endpoint)
+        if call.adapter == "anthropic":
+            return AnthropicModelTurnProvider(call.endpoint)
+        if call.adapter in {"gemini", "google"}:
+            return GeminiModelTurnProvider(call.endpoint)
+        if call.adapter == "openai_compatible":
+            return OpenAICompatibleModelTurnProvider(call.endpoint)
+        if call.adapter == "openai_compatible_local":
+            return OpenAICompatibleModelTurnProvider(call.endpoint, credential_required=False)
+        if call.adapter == "ollama":
+            return OllamaModelTurnProvider(call.endpoint)
         if call.adapter in {"local", "fake"}:
             return FakeModelTurnProvider()
         raise ValueError(f"no V1 model-turn provider for adapter {call.adapter!r}")
@@ -257,6 +277,29 @@ class ModelTurnRuntime:
                 )
             ) from exc
         return json_safe(candidate)
+
+    def _validate_tool_calls(self, request: ModelTurnRequest, result: ProviderTurnResult) -> None:
+        definitions = {tool.name: tool for tool in request.tools}
+        call_ids: set[str] = set()
+        for call in result.tool_calls:
+            definition = definitions.get(call.name)
+            if definition is None or call.call_id in call_ids:
+                raise ModelTurnProviderException(
+                    ModelTurnError(
+                        code=ModelTurnErrorCode.TOOL_CALL_MALFORMED,
+                        message="model returned an unknown tool or duplicate call ID",
+                    )
+                )
+            call_ids.add(call.call_id)
+            try:
+                jsonschema.validate(call.arguments, definition.input_schema)
+            except jsonschema.ValidationError as exc:
+                raise ModelTurnProviderException(
+                    ModelTurnError(
+                        code=ModelTurnErrorCode.TOOL_CALL_MALFORMED,
+                        message="model tool arguments violate the declared input schema",
+                    )
+                ) from exc
 
     def _failure_response(
         self,
@@ -312,4 +355,4 @@ def _package_version() -> str:
     except PackageNotFoundError:
         from thinker import __version__
 
-        return __version__
+        return str(__version__)

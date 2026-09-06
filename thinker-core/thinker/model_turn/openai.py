@@ -62,6 +62,14 @@ class OpenAIModelTurnProvider:
         try:
             with httpx.Client(timeout=request.timeout_ms / 1000.0) as client:
                 response = client.post(self._responses_url(), json=payload, headers=headers)
+                if (
+                    request.response_schema is not None
+                    and response.status_code == 400
+                    and _response_error_code(response) == "invalid_json_schema"
+                    and not cancel_event.is_set()
+                ):
+                    fallback = self._payload(request, call, native_schema=False)
+                    response = client.post(self._responses_url(), json=fallback, headers=headers)
         except httpx.TimeoutException as exc:
             raise _provider_error(
                 ModelTurnErrorCode.REQUEST_TIMEOUT,
@@ -97,7 +105,13 @@ class OpenAIModelTurnProvider:
                 "OpenAI returned a malformed response",
             ) from exc
 
-    def _payload(self, request: ModelTurnRequest, call: RegistryCall) -> dict[str, Any]:
+    def _payload(
+        self,
+        request: ModelTurnRequest,
+        call: RegistryCall,
+        *,
+        native_schema: bool = True,
+    ) -> dict[str, Any]:
         input_items: list[dict[str, Any]] = []
         for message in request.messages:
             input_items.extend(_message_items(message))
@@ -129,7 +143,7 @@ class OpenAIModelTurnProvider:
                 for tool in request.tools
             ]
         if request.response_schema is not None:
-            if "json_schema" in call.caps or "structured_output" in call.caps:
+            if native_schema and ("json_schema" in call.caps or "structured_output" in call.caps):
                 payload["text"] = {
                     "format": {
                         "type": "json_schema",
@@ -140,6 +154,11 @@ class OpenAIModelTurnProvider:
                 }
             else:
                 payload["text"] = {"format": {"type": "json_object"}}
+                schema_instruction = _schema_instruction(request.response_schema)
+                existing = payload.get("instructions")
+                payload["instructions"] = (
+                    f"{existing}\n\n{schema_instruction}" if existing else schema_instruction
+                )
         if request.continuation:
             payload["previous_response_id"] = request.continuation.token
         if request.generation.temperature is not None:
@@ -278,6 +297,11 @@ def _tool_output(output: object, is_error: bool) -> str:
     return json.dumps(body, sort_keys=True, separators=(",", ":"))
 
 
+def _schema_instruction(schema: dict[str, Any]) -> str:
+    encoded = json.dumps(schema, sort_keys=True, separators=(",", ":"))
+    return f"Return only a JSON value that satisfies this JSON Schema: {encoded}"
+
+
 def _optional_int(value: object) -> int | None:
     if value is None:
         return None
@@ -308,15 +332,7 @@ def _resolve_credential(provider: str) -> str | None:
 
 def _http_error(response: httpx.Response) -> ModelTurnProviderException:
     status = response.status_code
-    provider_code: str | None = None
-    try:
-        error = response.json().get("error", {})
-        if isinstance(error, dict) and isinstance(error.get("code"), str):
-            candidate = error["code"][:100]
-            if candidate and all(char.isalnum() or char in "._-" for char in candidate):
-                provider_code = candidate
-    except (AttributeError, TypeError, ValueError, json.JSONDecodeError):
-        provider_code = None
+    provider_code = _response_error_code(response)
 
     if status in (401, 403):
         code, message, retryable = (
@@ -363,6 +379,19 @@ def _http_error(response: httpx.Response) -> ModelTurnProviderException:
             provider_code=provider_code,
         )
     )
+
+
+def _response_error_code(response: httpx.Response) -> str | None:
+    try:
+        error = response.json().get("error", {})
+        raw_code = error.get("code") if isinstance(error, dict) else None
+        if isinstance(raw_code, str):
+            candidate: str = raw_code[:100]
+            if candidate and all(char.isalnum() or char in "._-" for char in candidate):
+                return candidate
+    except (AttributeError, TypeError, ValueError, json.JSONDecodeError):
+        pass
+    return None
 
 
 def _provider_error(
