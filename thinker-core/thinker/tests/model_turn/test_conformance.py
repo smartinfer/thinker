@@ -65,6 +65,30 @@ def test_one_tool_call_has_stable_structured_identity(runtime):
     assert response.tool_calls[0].arguments == {"path": "README.md"}
 
 
+def test_fake_tool_call_satisfies_strict_nullable_provider_schema(runtime):
+    strict_read = ToolDefinition(
+        name="read_file",
+        description="Read one file",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "start_line": {"type": ["integer", "null"], "minimum": 1},
+                "end_line": {"type": ["integer", "null"], "minimum": 1},
+            },
+            "required": ["path", "start_line", "end_line"],
+            "additionalProperties": False,
+        },
+    )
+    response = runtime.turn(make_request("one_tool_call", tools=(strict_read,)))
+    assert response.normalized_error is None
+    assert response.tool_calls[0].arguments == {
+        "path": "README.md",
+        "start_line": None,
+        "end_line": None,
+    }
+
+
 def test_multiple_tool_calls_remain_distinct(runtime):
     response = runtime.turn(
         make_request(

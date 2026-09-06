@@ -59,7 +59,13 @@ class FakeModelTurnProvider:
                 )
             return ProviderTurnResult(
                 tool_calls=(
-                    ToolCall(call_id="call-1", name="read_file", arguments={"path": "README.md"}),
+                    ToolCall(
+                        call_id="call-1",
+                        name="read_file",
+                        arguments=_complete_nullable_arguments(
+                            request, "read_file", {"path": "README.md"}
+                        ),
+                    ),
                 ),
                 continuation=continuation,
                 usage=usage,
@@ -86,7 +92,11 @@ class FakeModelTurnProvider:
                     ToolCall(
                         call_id="call-network",
                         name="run_command",
-                        arguments={"argv": ["/usr/bin/python3", "-c", script]},
+                        arguments=_complete_nullable_arguments(
+                            request,
+                            "run_command",
+                            {"argv": ["/usr/bin/python3", "-c", script]},
+                        ),
                     ),
                 ),
                 continuation=continuation,
@@ -151,6 +161,33 @@ def _json_text(value: object) -> str:
     import json
 
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _complete_nullable_arguments(
+    request: ModelTurnRequest, tool_name: str, arguments: dict[str, object]
+) -> dict[str, object]:
+    """Fill strict-provider nullable fields required by a caller's tool schema."""
+
+    completed = dict(arguments)
+    definition = next((tool for tool in request.tools if tool.name == tool_name), None)
+    if definition is None:
+        return completed
+    required = definition.input_schema.get("required", ())
+    properties = definition.input_schema.get("properties", {})
+    if not isinstance(required, list) or not isinstance(properties, dict):
+        return completed
+    for name in required:
+        if name in completed or not isinstance(name, str):
+            continue
+        schema = properties.get(name)
+        if isinstance(schema, dict) and _schema_allows_null(schema):
+            completed[name] = None
+    return completed
+
+
+def _schema_allows_null(schema: dict[str, object]) -> bool:
+    allowed = schema.get("type")
+    return allowed == "null" or (isinstance(allowed, list) and "null" in allowed)
 
 
 def _failure(
