@@ -79,7 +79,7 @@ class AnthropicModelTurnProvider:
         if not response.is_success:
             raise http_error(response, call.provider)
         try:
-            return self._parse_response(response.json(), call)
+            return self._parse_response(response.json(), call, request)
         except ModelTurnProviderException:
             raise
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
@@ -102,7 +102,7 @@ class AnthropicModelTurnProvider:
                 {
                     "name": tool.name,
                     "description": tool.description,
-                    "input_schema": tool.input_schema,
+                    "input_schema": _anthropic_tool_schema(tool.input_schema),
                     "strict": tool.strict,
                 }
                 for tool in request.tools
@@ -119,7 +119,9 @@ class AnthropicModelTurnProvider:
             payload["stop_sequences"] = list(request.generation.stop)
         return payload
 
-    def _parse_response(self, data: dict[str, Any], call: RegistryCall) -> ProviderTurnResult:
+    def _parse_response(
+        self, data: dict[str, Any], call: RegistryCall, request: ModelTurnRequest
+    ) -> ProviderTurnResult:
         content = data.get("content")
         if not isinstance(content, list):
             raise provider_error(
@@ -147,7 +149,13 @@ class AnthropicModelTurnProvider:
                         ModelTurnErrorCode.TOOL_CALL_MALFORMED,
                         "anthropic returned a malformed tool call",
                     )
-                calls.append(ToolCall(call_id=call_id, name=name, arguments=arguments))
+                calls.append(
+                    ToolCall(
+                        call_id=call_id,
+                        name=name,
+                        arguments=_restore_nullable_arguments(request, name, arguments),
+                    )
+                )
         raw_usage = data.get("usage") or {}
         if not isinstance(raw_usage, dict):
             raise TypeError("usage is not an object")
@@ -218,3 +226,60 @@ def _optional_int(value: object) -> int | None:
     if not isinstance(value, (str, bytes, bytearray, int, float)):
         raise TypeError("token count is not numeric")
     return int(value)
+
+
+def _anthropic_tool_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Render canonical required-nullable fields as Anthropic optional fields.
+
+    Anthropic rejects the JSON Schema ``type: [T, "null"]`` form used by
+    strict OpenAI-style tool schemas. Omitting such fields is semantically
+    equivalent at the V1 boundary because the response normalizer restores
+    each omitted required-nullable field to ``null`` before local validation.
+    """
+
+    rendered = json.loads(json.dumps(schema))
+    _rewrite_nullable_object_fields(rendered)
+    return rendered
+
+
+def _rewrite_nullable_object_fields(schema: dict[str, Any]) -> None:
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        required = schema.get("required")
+        required_names = list(required) if isinstance(required, list) else []
+        optional: set[str] = set()
+        for name, value in properties.items():
+            if not isinstance(value, dict):
+                continue
+            allowed = value.get("type")
+            if isinstance(allowed, list) and "null" in allowed:
+                non_null = [item for item in allowed if item != "null"]
+                value["type"] = non_null[0] if len(non_null) == 1 else non_null
+                optional.add(name)
+            _rewrite_nullable_object_fields(value)
+        if optional:
+            schema["required"] = [name for name in required_names if name not in optional]
+    items = schema.get("items")
+    if isinstance(items, dict):
+        _rewrite_nullable_object_fields(items)
+
+
+def _restore_nullable_arguments(
+    request: ModelTurnRequest, tool_name: str, arguments: dict[str, Any]
+) -> dict[str, Any]:
+    restored = dict(arguments)
+    definition = next((tool for tool in request.tools if tool.name == tool_name), None)
+    if definition is None:
+        return restored
+    required = definition.input_schema.get("required")
+    properties = definition.input_schema.get("properties")
+    if not isinstance(required, list) or not isinstance(properties, dict):
+        return restored
+    for name in required:
+        if name in restored or not isinstance(name, str):
+            continue
+        value = properties.get(name)
+        allowed = value.get("type") if isinstance(value, dict) else None
+        if isinstance(allowed, list) and "null" in allowed:
+            restored[name] = None
+    return restored

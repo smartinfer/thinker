@@ -49,7 +49,15 @@ def test_anthropic_maps_tools_results_schema_identity_and_usage(fake_call):
             ToolDefinition(
                 name="read",
                 description="Read a file",
-                input_schema={"type": "object", "properties": {"path": {"type": "string"}}},
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "start_line": {"type": ["integer", "null"], "minimum": 1},
+                    },
+                    "required": ["path", "start_line"],
+                    "additionalProperties": False,
+                },
             ),
         ),
         tool_results=(ToolResult(call_id="prior", output={"ok": True}),),
@@ -59,12 +67,15 @@ def test_anthropic_maps_tools_results_schema_identity_and_usage(fake_call):
     payload = json.loads(route.calls[0].request.content)
     assert payload["system"] == "system"
     assert payload["tools"][0]["input_schema"]["type"] == "object"
+    assert payload["tools"][0]["input_schema"]["required"] == ["path"]
+    assert payload["tools"][0]["input_schema"]["properties"]["start_line"]["type"] == "integer"
     assert payload["messages"][-1]["content"][0]["tool_use_id"] == "prior"
     assert payload["output_config"]["format"]["type"] == "json_schema"
     assert [(call.call_id, call.name) for call in result.tool_calls] == [
         ("a", "read"),
         ("b", "read"),
     ]
+    assert result.tool_calls[0].arguments["start_line"] is None
     assert result.resolved_provider == "anthropic"
     assert result.resolved_model == "claude-resolved"
     assert result.usage.cached_input_tokens == 2
