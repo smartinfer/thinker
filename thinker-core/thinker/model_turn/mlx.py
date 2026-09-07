@@ -341,6 +341,16 @@ def _parse_generated_output(
                     ModelTurnErrorCode.TOOL_CALL_MALFORMED,
                     "MLX native tool call omitted its name or object arguments",
                 )
+            # Normalization owns whitespace: line-oriented native formats (e.g.
+            # the GLM family) leave the newline after the tool name and mlx-lm's
+            # tool parser returns it verbatim, so a semantically perfect call
+            # would otherwise fail the registry name match as an unknown tool.
+            name = name.strip()
+            if not name:
+                raise provider_error(
+                    ModelTurnErrorCode.TOOL_CALL_MALFORMED,
+                    "MLX native tool call omitted its name or object arguments",
+                )
             index = len(calls)
             digest = hashlib.sha256(
                 json.dumps(

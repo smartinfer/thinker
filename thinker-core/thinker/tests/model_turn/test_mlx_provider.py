@@ -199,6 +199,39 @@ def test_native_tool_calls_and_message_replay_continuation(monkeypatch, fake_cal
     assert replay_messages[-1]["tool_call_id"] == first.tool_calls[0].call_id
 
 
+def test_line_oriented_tool_name_whitespace_is_normalized(monkeypatch, fake_call):
+    # GLM-family chat templates are line-oriented: mlx-lm's tool parser returns
+    # the tool name with its trailing newline verbatim ("lookup_status\n").
+    # Normalization owns whitespace — the semantically correct call must match
+    # the registry tool name instead of failing as an unknown tool.
+    bindings = FakeBindings(
+        ['<tool_call>{"name":"lookup_status\\n","arguments":{"name":"ledger"}}</tool_call>']
+    )
+    runtime = mlx_runtime(monkeypatch, fake_call, bindings)
+    definition = ToolDefinition(
+        name="lookup_status",
+        description="Look up status",
+        input_schema={
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+            "additionalProperties": False,
+        },
+    )
+    response = runtime.turn(
+        make_request(
+            request_id="mlx-tool-ws-1",
+            requested_route="mlx:test",
+            metadata={},
+            tools=(definition,),
+        )
+    )
+    assert response.normalized_error is None
+    assert response.finish_reason == "tool_calls"
+    assert response.tool_calls[0].name == "lookup_status"
+    assert response.tool_calls[0].arguments == {"name": "ledger"}
+
+
 def test_tool_call_ids_are_stable_and_distinct(monkeypatch, fake_call):
     output = (
         '<tool_call>{"name":"lookup","arguments":{"name":"a"}}</tool_call>'
