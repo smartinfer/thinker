@@ -29,6 +29,7 @@ def test_provider_conformance_manifest_is_complete_and_uses_declared_statuses():
         "gemini-native",
         "openai-compatible",
         "ollama-native",
+        "mlx-direct",
     }
     for family in manifest["families"].values():
         assert set(family["capabilities"]) == required

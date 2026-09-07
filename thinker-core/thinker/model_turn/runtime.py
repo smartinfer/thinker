@@ -24,6 +24,7 @@ from .capabilities import JSON_MODE, MODEL_TURN_V1, TOOL_RESULT_CONTINUATION, TO
 from .errors import ModelTurnError, ModelTurnErrorCode, ModelTurnProviderException
 from .fake import FakeModelTurnProvider
 from .gemini import GeminiModelTurnProvider
+from .mlx import MLXModelTurnProvider
 from .models import Cost, ModelTurnRequest, ModelTurnResponse, Usage, json_safe
 from .ollama import OllamaModelTurnProvider
 from .openai import OpenAIModelTurnProvider
@@ -57,6 +58,9 @@ class ModelTurnRuntime:
         self._observer = observer
         self._active: dict[str, threading.Event] = {}
         self._lock = threading.Lock()
+        # Direct MLX models are intentionally resident for the process lifetime.
+        # Other providers remain stateless transports created per request.
+        self._mlx_provider = MLXModelTurnProvider()
         self.thinker_version = _package_version()
         self.thinker_revision: str = (
             thinker_revision or os.getenv("THINKER_REVISION") or f"package:{self.thinker_version}"
@@ -247,6 +251,10 @@ class ModelTurnRuntime:
             return OpenAICompatibleModelTurnProvider(call.endpoint, credential_required=False)
         if call.adapter == "ollama":
             return OllamaModelTurnProvider(call.endpoint)
+        if call.adapter == "mlx":
+            if call.provider != "mlx":
+                raise ValueError("MLX native transport requires provider='mlx'")
+            return self._mlx_provider
         if call.adapter in {"local", "fake"}:
             return FakeModelTurnProvider()
         raise ValueError(f"no V1 model-turn provider for adapter {call.adapter!r}")

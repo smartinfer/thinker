@@ -22,6 +22,11 @@ thinker-model-turn-server = "thinker.model_turn.server_cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.2","respx>=0.21","mypy>=1.11","ruff>=0.6","black>=24.8"]
+mlx = [
+  "mlx>=0.31.2; platform_system == 'Darwin' and platform_machine == 'arm64'",
+  "mlx-lm>=0.31.3,<0.32; platform_system == 'Darwin' and platform_machine == 'arm64'",
+  "huggingface-hub>=0.34",
+]
 
 [tool.ruff]
 line-length = 100

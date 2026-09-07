@@ -82,6 +82,21 @@ families:
       usage: REAL_TESTED
       model_identity: REAL_TESTED
       normalized_errors: MOCK_TESTED
+  mlx-direct:
+    provider_identities: [mlx]
+    transport_adapter: mlx
+    capabilities:
+      text: REAL_TESTED
+      structured_output: REAL_TESTED
+      one_tool_call: REAL_TESTED
+      multiple_tool_calls: MOCK_TESTED
+      tool_result_continuation: REAL_TESTED
+      provider_continuation: UNSUPPORTED
+      timeout: IMPLEMENTED
+      cancellation: FAKE_TESTED
+      usage: REAL_TESTED
+      model_identity: REAL_TESTED
+      normalized_errors: MOCK_TESTED
 real_smokes:
   openai:
     model: gpt-4o-mini-2024-07-18
@@ -103,3 +118,8 @@ real_smokes:
     text: PASS
     structured_output: PASS
     tool_result_continuation: NOT_EXERCISED
+  mlx:
+    model: mlx-community/Qwen3-8B-4bit
+    text: PASS
+    structured_output: PASS
+    tool_result_continuation: PASS

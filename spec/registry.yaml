@@ -70,3 +70,15 @@ calls:
     payload_style: "chat_completions_v1"
     endpoint: "http://127.0.0.1:8080"
     aliases: ["local:mlx"]
+
+  - call_id: "mlx:qwen3-8b-4bit.chat"
+    provider: "mlx"
+    model_id: "mlx-community/Qwen3-8B-4bit"
+    kind: "chat"
+    modality: "text"
+    caps: ["model_turn_v1","json_mode","json_schema","tools","multiple_tool_calls","tool_result_continuation"]
+    limits: { max_input_tokens: 32768, max_output_tokens: 4096 }
+    price: { input_per_1k: 0.0, output_per_1k: 0.0 }
+    adapter: "mlx"
+    payload_style: "mlx_lm_python_v1"
+    aliases: ["mlx:state"]
