@@ -1,5 +1,9 @@
 # Thinker
 
+*An open-source project from **SmartInfer, Inc.** · Primary author: Anjan Goswami*
+
+<!-- Branding note: the SmartInfer logo will be added here once an approved logo asset is available; none is bundled in this release. -->
+
 Unified, minimal LLM access with a registry-driven router and ThinkerQL request language.
 
 ## Overview
@@ -173,8 +177,14 @@ The project follows TDD (Test-Driven Development) with:
 
 ## License
 
-MIT License - see [LICENSE](thinker-core/LICENSE) file.
+MIT License — Copyright (c) 2026 SmartInfer, Inc. See [LICENSE](thinker-core/LICENSE).
 
-## Author
+## Author & organization
 
-Anjan Goswami
+Primary author: **Anjan Goswami**. Developed at **SmartInfer, Inc.**
+
+## Other SmartInfer open-source projects
+
+- [ProtoSpec](https://github.com/smartinfer/protospec) — deterministic software specification language.
+
+(Thinker and ProtoSpec are architecturally independent; neither depends on the other.)
