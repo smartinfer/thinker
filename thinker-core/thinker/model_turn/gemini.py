@@ -15,6 +15,7 @@ from thinker.registry.schema import RegistryCall
 
 from .errors import ModelTurnErrorCode, ModelTurnProviderException
 from .http_common import CredentialResolver, http_error, provider_error, resolve_credential
+from . import schema_compat
 from .models import Continuation, MessageRole, ModelTurnRequest, ToolCall, Usage, json_safe
 from .provider import ProviderTurnResult
 
@@ -86,7 +87,7 @@ class GeminiModelTurnProvider:
         if not response.is_success:
             raise http_error(response, call.provider)
         try:
-            return self._parse_response(response.json(), call, payload["contents"])
+            return self._parse_response(response.json(), call, payload["contents"], request)
         except ModelTurnProviderException:
             raise
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
@@ -170,7 +171,14 @@ class GeminiModelTurnProvider:
                         {
                             "name": tool.name,
                             "description": tool.description,
-                            "parametersJsonSchema": tool.input_schema,
+                            # Gemini's function calling does not implement the
+                            # OpenAI strict required-nullable convention: render
+                            # those fields as ordinary optionals; the response
+                            # path restores omissions to null before the common
+                            # Model-Turn validation (schema_compat).
+                            "parametersJsonSchema": schema_compat.render_nullable_as_optional(
+                                tool.input_schema
+                            ),
                         }
                         for tool in request.tools
                     ]
@@ -194,6 +202,7 @@ class GeminiModelTurnProvider:
         data: dict[str, Any],
         call: RegistryCall,
         request_contents: object,
+        request: ModelTurnRequest | None = None,
     ) -> ProviderTurnResult:
         candidates = data.get("candidates")
         if (
@@ -241,6 +250,10 @@ class GeminiModelTurnProvider:
                     raise provider_error(
                         ModelTurnErrorCode.TOOL_CALL_MALFORMED,
                         "gemini returned a malformed function call",
+                    )
+                if request is not None:
+                    arguments = schema_compat.restore_omitted_nullable_arguments(
+                        request.tools, name, arguments
                     )
                 normalized = {"id": call_id, "name": name, "args": arguments}
                 retained["functionCall"] = normalized

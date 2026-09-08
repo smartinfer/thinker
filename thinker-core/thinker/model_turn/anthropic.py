@@ -12,6 +12,7 @@ from thinker.registry.schema import RegistryCall
 
 from .errors import ModelTurnErrorCode, ModelTurnProviderException
 from .http_common import CredentialResolver, http_error, provider_error, resolve_credential
+from . import schema_compat
 from .models import MessageRole, ModelMessage, ModelTurnRequest, ToolCall, Usage, json_safe
 from .provider import ProviderTurnResult
 
@@ -234,51 +235,13 @@ def _anthropic_tool_schema(schema: dict[str, Any]) -> dict[str, Any]:
     strict OpenAI-style tool schemas. Omitting such fields is semantically
     equivalent at the V1 boundary because the response normalizer restores
     each omitted required-nullable field to ``null`` before local validation.
+    Shared with the Gemini adapter via schema_compat.
     """
 
-    rendered = json.loads(json.dumps(schema))
-    _rewrite_nullable_object_fields(rendered)
-    return rendered
-
-
-def _rewrite_nullable_object_fields(schema: dict[str, Any]) -> None:
-    properties = schema.get("properties")
-    if isinstance(properties, dict):
-        required = schema.get("required")
-        required_names = list(required) if isinstance(required, list) else []
-        optional: set[str] = set()
-        for name, value in properties.items():
-            if not isinstance(value, dict):
-                continue
-            allowed = value.get("type")
-            if isinstance(allowed, list) and "null" in allowed:
-                non_null = [item for item in allowed if item != "null"]
-                value["type"] = non_null[0] if len(non_null) == 1 else non_null
-                optional.add(name)
-            _rewrite_nullable_object_fields(value)
-        if optional:
-            schema["required"] = [name for name in required_names if name not in optional]
-    items = schema.get("items")
-    if isinstance(items, dict):
-        _rewrite_nullable_object_fields(items)
+    return schema_compat.render_nullable_as_optional(schema)
 
 
 def _restore_nullable_arguments(
     request: ModelTurnRequest, tool_name: str, arguments: dict[str, Any]
 ) -> dict[str, Any]:
-    restored = dict(arguments)
-    definition = next((tool for tool in request.tools if tool.name == tool_name), None)
-    if definition is None:
-        return restored
-    required = definition.input_schema.get("required")
-    properties = definition.input_schema.get("properties")
-    if not isinstance(required, list) or not isinstance(properties, dict):
-        return restored
-    for name in required:
-        if name in restored or not isinstance(name, str):
-            continue
-        value = properties.get(name)
-        allowed = value.get("type") if isinstance(value, dict) else None
-        if isinstance(allowed, list) and "null" in allowed:
-            restored[name] = None
-    return restored
+    return schema_compat.restore_omitted_nullable_arguments(request.tools, tool_name, arguments)

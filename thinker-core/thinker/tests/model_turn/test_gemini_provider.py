@@ -124,3 +124,73 @@ def test_gemini_timeout_is_typed(fake_call):
             make_request(), gemini_call(fake_call), Event()
         )
     assert raised.value.error.code == ModelTurnErrorCode.REQUEST_TIMEOUT
+
+
+@respx.mock
+def test_gemini_required_nullable_fields_render_optional_and_restore_null(fake_call):
+    # Canonical strict schema: dolphin_action_reason and the nested obligation
+    # fields are required-nullable. Gemini must receive them as ordinary
+    # optionals and an omitted field must come back as null before the common
+    # Model-Turn validation (which is unchanged and strict).
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent"
+    route = respx.post(url).mock(
+        return_value=httpx.Response(
+            200,
+            json=gemini_response(
+                {
+                    "functionCall": {
+                        "id": "call-1",
+                        "name": "read_file",
+                        # Gemini legitimately omits the optional reason AND the
+                        # nested obligation's optional id.
+                        "args": {
+                            "path": "add.go",
+                            "dolphin_obligation": {"kind": "EXPLORE", "description": "inspect the file"},
+                        },
+                    }
+                }
+            ),
+        )
+    )
+    strict_schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["path", "dolphin_action_reason", "dolphin_obligation"],
+        "properties": {
+            "path": {"type": "string"},
+            "dolphin_action_reason": {"type": ["string", "null"]},
+            "dolphin_obligation": {
+                "type": ["object", "null"],
+                "additionalProperties": False,
+                "required": ["description", "id", "kind"],
+                "properties": {
+                    "id": {"type": ["string", "null"]},
+                    "kind": {"type": ["string", "null"], "enum": ["EXPLORE", "IMPLEMENT", "VERIFY", "REPAIR"]},
+                    "description": {"type": ["string", "null"]},
+                },
+            },
+        },
+    }
+    provider = GeminiModelTurnProvider(credential_resolver=lambda _: "secret")
+    request = make_request(
+        tools=(ToolDefinition(name="read_file", description="Read", input_schema=strict_schema),),
+    )
+    result = provider.turn(request, gemini_call(fake_call), Event())
+
+    # Request side: no type unions reach Gemini; nullable fields left required?
+    sent = json.loads(route.calls[0].request.content)
+    declaration = sent["tools"][0]["functionDeclarations"][0]["parametersJsonSchema"]
+    assert declaration["properties"]["dolphin_action_reason"]["type"] == "string"
+    assert declaration["required"] == ["path"]
+    nested = declaration["properties"]["dolphin_obligation"]
+    assert nested["type"] == "object"
+    assert nested["required"] == []
+    assert nested["properties"]["kind"]["type"] == "string"
+
+    # Response side: omitted required-nullable fields restored to null,
+    # top-level and nested.
+    call = result.tool_calls[0]
+    assert call.arguments["dolphin_action_reason"] is None
+    assert call.arguments["dolphin_obligation"]["id"] is None
+    assert call.arguments["dolphin_obligation"]["kind"] == "EXPLORE"
+    assert call.arguments["path"] == "add.go"
