@@ -82,3 +82,37 @@ calls:
     adapter: "mlx"
     payload_style: "mlx_lm_python_v1"
     aliases: ["mlx:state"]
+
+  # Together inference host (OpenAI-compatible transport, provider identity
+  # preserved as "together"). Validated 2026-09-08 via Thinker Model-Turn V1:
+  # provider identity, usage/cost, native tools, multiple tool calls,
+  # ToolResult continuation, and structured output. Logical capability-tier
+  # aliases (code.fast / code.strong) let a future router request a tier
+  # rather than a vendor. Only the gpt-oss family is serverless on this
+  # account; larger coders (Qwen3-Coder-480B, DeepSeek-V3.1, GLM-4.6) require
+  # dedicated endpoints (HTTP 400 non-serverless) and are intentionally omitted.
+  - call_id: "together:gpt-oss-20b.chat"
+    provider: "together"
+    model_id: "openai/gpt-oss-20b"
+    kind: "chat"
+    modality: "text"
+    caps: ["model_turn_v1","json_mode","tools","multiple_tool_calls","tool_result_continuation"]
+    limits: { max_input_tokens: 131072, max_output_tokens: 4096 }
+    price: { input_per_1k: 0.00005, output_per_1k: 0.0002 }
+    adapter: "openai_compatible"
+    endpoint: "https://api.together.xyz/v1"
+    payload_style: "chat_completions_v1"
+    aliases: ["code.fast"]
+
+  - call_id: "together:gpt-oss-120b.chat"
+    provider: "together"
+    model_id: "openai/gpt-oss-120b"
+    kind: "chat"
+    modality: "text"
+    caps: ["model_turn_v1","json_mode","tools","multiple_tool_calls","tool_result_continuation"]
+    limits: { max_input_tokens: 131072, max_output_tokens: 4096 }
+    price: { input_per_1k: 0.00015, output_per_1k: 0.0006 }
+    adapter: "openai_compatible"
+    endpoint: "https://api.together.xyz/v1"
+    payload_style: "chat_completions_v1"
+    aliases: ["code.strong"]
