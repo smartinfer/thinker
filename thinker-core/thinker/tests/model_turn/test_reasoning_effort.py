@@ -89,7 +89,12 @@ def _fake_call(*, caps, reasoning_effort=None) -> RegistryCall:
 def _runtime(call: RegistryCall) -> ModelTurnRuntime:
     store = RegistryStore()
     store.put_call(call)
-    return ModelTurnRuntime(store, thinker_revision="test")
+    # Effort provenance is emitted server-side via the observer (§9), NOT as a
+    # wire field on ModelTurnResponse (that would break strict-decoding clients).
+    records: list[dict] = []
+    rt = ModelTurnRuntime(store, thinker_revision="test", observer=records.append)
+    rt.observed = records  # type: ignore[attr-defined]
+    return rt
 
 
 def _fake_req(effort=None) -> ModelTurnRequest:
@@ -114,14 +119,15 @@ def test_provenance_reports_effort_and_continuation_preserves_it():
     rt = _runtime(_fake_call(caps=["model_turn_v1", "reasoning_effort"]))
     r1 = rt.turn(_fake_req(effort=ReasoningEffort.HIGH))
     assert r1.normalized_error is None
-    assert r1.reasoning_effort is ReasoningEffort.HIGH  # provenance unambiguous
+    assert rt.observed[-1]["reasoning_effort"] == "high"  # provenance unambiguous
     # A later turn configured high stays high (effort does not disappear).
     r2 = rt.turn(ModelTurnRequest(
         request_id="r2", requested_route="fake:deterministic.chat",
         messages=(ModelMessage(role="user", content="again"),),
         metadata={"fake_scenario": "plain_text"},
         generation=GenerationParameters(reasoning_effort=ReasoningEffort.HIGH), timeout_ms=1000))
-    assert r2.reasoning_effort is ReasoningEffort.HIGH
+    assert r2.normalized_error is None
+    assert rt.observed[-1]["reasoning_effort"] == "high"
 
 
 def test_route_default_effort_reported_in_provenance():
@@ -129,11 +135,21 @@ def test_route_default_effort_reported_in_provenance():
     rt = _runtime(_fake_call(caps=["model_turn_v1", "reasoning_effort"], reasoning_effort="high"))
     r = rt.turn(_fake_req())
     assert r.normalized_error is None
-    assert r.reasoning_effort is ReasoningEffort.HIGH
+    assert rt.observed[-1]["reasoning_effort"] == "high"
 
 
 def test_absent_effort_reported_as_none():
     rt = _runtime(_fake_call(caps=["model_turn_v1"]))
     r = rt.turn(_fake_req())
     assert r.normalized_error is None
-    assert r.reasoning_effort is None  # "default" distinct from "high"
+    assert rt.observed[-1]["reasoning_effort"] is None  # "default" distinct from "high"
+
+
+def test_wire_response_has_no_reasoning_effort_field():
+    # Regression: a new top-level response field breaks clients that strict-decode
+    # the response (Dolphin's json.Decoder.DisallowUnknownFields), including the
+    # frozen experiment binary. Effort provenance lives in the observer, not here.
+    rt = _runtime(_fake_call(caps=["model_turn_v1", "reasoning_effort"], reasoning_effort="high"))
+    r = rt.turn(_fake_req())
+    assert "reasoning_effort" not in r.model_dump(mode="json")
+    assert rt.observed[-1]["reasoning_effort"] == "high"  # still recorded server-side

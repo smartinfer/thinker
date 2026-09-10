@@ -192,7 +192,6 @@ class ModelTurnRuntime:
                     resolved_route=call.call_id,
                     resolved_provider=outcome.resolved_provider or call.provider,
                     resolved_model=outcome.resolved_model or call.model_id,
-                    reasoning_effort=self._effective_reasoning_effort(request, call),
                     usage=outcome.usage,
                     cost=Cost(amount=cost),
                     finish_reason=outcome.finish_reason,
@@ -202,7 +201,7 @@ class ModelTurnRuntime:
                         message="provider returned an incomplete response: " + outcome.incomplete_reason,
                     ),
                 )
-                self._observe(incomplete_resp)
+                self._observe(incomplete_resp, self._effective_reasoning_effort(request, call))
                 return incomplete_resp
 
             self._validate_tool_calls(request, outcome)
@@ -220,7 +219,6 @@ class ModelTurnRuntime:
                 resolved_route=call.call_id,
                 resolved_provider=outcome.resolved_provider or call.provider,
                 resolved_model=outcome.resolved_model or call.model_id,
-                reasoning_effort=self._effective_reasoning_effort(request, call),
                 assistant_content=outcome.assistant_content,
                 tool_calls=outcome.tool_calls,
                 structured_output=structured,
@@ -230,7 +228,7 @@ class ModelTurnRuntime:
                 finish_reason=outcome.finish_reason,
                 duration_ms=(time.monotonic() - started) * 1000.0,
             )
-            self._observe(response)
+            self._observe(response, self._effective_reasoning_effort(request, call))
             return response
         except ModelTurnProviderException as exc:
             return self._failure_response(request, started, exc.error, call)
@@ -388,7 +386,9 @@ class ModelTurnRuntime:
         self._observe(response)
         return response
 
-    def _observe(self, response: ModelTurnResponse) -> None:
+    def _observe(
+        self, response: ModelTurnResponse, reasoning_effort: ReasoningEffort | None = None
+    ) -> None:
         if self._observer is None:
             return
         self._observer(
@@ -399,6 +399,9 @@ class ModelTurnRuntime:
                 "resolved_route": response.resolved_route,
                 "resolved_provider": response.resolved_provider,
                 "resolved_model": response.resolved_model,
+                # §9 provenance, off the wire response: distinguishes gpt-5.1
+                # "default" (None) from "high". None = none/absent.
+                "reasoning_effort": reasoning_effort.value if reasoning_effort is not None else None,
                 "duration_ms": response.duration_ms,
                 "usage": response.usage.model_dump(mode="json"),
                 "cost": response.cost.model_dump(mode="json"),

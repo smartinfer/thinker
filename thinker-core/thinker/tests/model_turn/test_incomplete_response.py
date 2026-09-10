@@ -80,17 +80,22 @@ class _IncompleteProvider:
 def _incomplete_runtime(reason="max_output_tokens") -> ModelTurnRuntime:
     call = _call(caps=CAPS, adapter="inc", reasoning_effort="high", call_id="openai:gpt-5-1.chat")
     store = RegistryStore(); store.put_call(call)
-    return ModelTurnRuntime(store, thinker_revision="t", provider_factories={"inc": lambda c: _IncompleteProvider(reason)})
+    records: list[dict] = []
+    rt = ModelTurnRuntime(store, thinker_revision="t", observer=records.append,
+        provider_factories={"inc": lambda c: _IncompleteProvider(reason)})
+    rt.observed = records  # type: ignore[attr-defined]
+    return rt
 
 
 def test_runtime_incomplete_is_typed_usage_preserved_not_malformed():
-    resp = _incomplete_runtime().turn(_req())
+    rt = _incomplete_runtime()
+    resp = rt.turn(_req())
     assert resp.normalized_error is not None
     assert resp.normalized_error.code == ModelTurnErrorCode.INCOMPLETE
     assert resp.normalized_error.code != ModelTurnErrorCode.MALFORMED_RESPONSE
     assert "max_output_tokens" in resp.normalized_error.message
     assert resp.usage.input_tokens == 500 and resp.usage.output_tokens == 32768  # usage preserved
-    assert resp.reasoning_effort == ReasoningEffort.HIGH  # provenance preserved
+    assert rt.observed[-1]["reasoning_effort"] == "high"  # provenance preserved (server-side, off wire)
 
 
 def test_runtime_incomplete_other_reason_preserved_generically():

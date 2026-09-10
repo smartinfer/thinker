@@ -200,10 +200,13 @@ class ModelTurnResponse(StrictModel):
     resolved_route: str | None = None
     resolved_provider: str | None = None
     resolved_model: str | None = None
-    # Effective reasoning effort applied to this turn (request value, else the
-    # route default). None = none/absent, so "gpt-5.1 default" and "gpt-5.1 high"
-    # are distinguishable in provenance.
-    reasoning_effort: ReasoningEffort | None = None
+    # NOTE: the effective reasoning effort is intentionally NOT a wire field on
+    # ModelTurnResponse. A new top-level response field breaks clients that
+    # strict-decode the response (Dolphin uses json.Decoder.DisallowUnknownFields),
+    # including the frozen experiment binary that cannot be recompiled. Effort
+    # provenance (§9: distinguishing "gpt-5.1 default" from "gpt-5.1 high") is
+    # emitted server-side through the observer record instead — see
+    # ModelTurnRuntime._observe(reasoning_effort=...).
     assistant_content: str | None = None
     tool_calls: tuple[ToolCall, ...] = ()
     structured_output: JsonValue | None = None

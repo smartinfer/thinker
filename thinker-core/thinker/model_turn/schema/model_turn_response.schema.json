@@ -101,17 +101,6 @@
       "title": "ModelTurnErrorCode",
       "type": "string"
     },
-    "ReasoningEffort": {
-      "description": "Provider-neutral reasoning-effort level for a model turn. Absence (field\nunset / None) preserves prior behavior; NONE explicitly disables reasoning.\nProvider mapping is capability-gated at the route (see runtime dispatch).",
-      "enum": [
-        "none",
-        "low",
-        "medium",
-        "high"
-      ],
-      "title": "ReasoningEffort",
-      "type": "string"
-    },
     "ToolCall": {
       "additionalProperties": false,
       "properties": {
@@ -262,17 +251,6 @@
       "default": "thinker.model-turn.v1",
       "title": "Protocol Version",
       "type": "string"
-    },
-    "reasoning_effort": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/ReasoningEffort"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null
     },
     "request_id": {
       "title": "Request Id",
