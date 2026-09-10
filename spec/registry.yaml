@@ -35,6 +35,19 @@ calls:
     payload_style: "messages_v1"
     aliases: ["anthropic:alpha"]
 
+  - call_id: "openai:gpt-5-1.chat"
+    provider: "openai"
+    model_id: "gpt-5.1"
+    kind: "chat"
+    modality: "text"
+    caps: ["model_turn_v1","json_mode","json_schema","tools","multiple_tool_calls","tool_result_continuation","provider_continuation","reasoning_effort"]
+    limits: { max_input_tokens: 400000, max_output_tokens: 128000 }
+    price: { input_per_1k: 0.0, output_per_1k: 0.0 }
+    adapter: "openai"
+    payload_style: "chat_completions_v1"
+    reasoning_effort: "high"
+    aliases: ["openai:reasoning-high"]
+
   - call_id: "gemini:gemini-2-5-flash.chat"
     provider: "gemini"
     model_id: "gemini-2.5-flash"

@@ -25,6 +25,17 @@
           "title": "Max Output Tokens",
           "type": "integer"
         },
+        "reasoning_effort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReasoningEffort"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "seed": {
           "anyOf": [
             {
@@ -119,6 +130,17 @@
       ],
       "title": "ModelMessage",
       "type": "object"
+    },
+    "ReasoningEffort": {
+      "description": "Provider-neutral reasoning-effort level for a model turn. Absence (field\nunset / None) preserves prior behavior; NONE explicitly disables reasoning.\nProvider mapping is capability-gated at the route (see runtime dispatch).",
+      "enum": [
+        "none",
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ReasoningEffort",
+      "type": "string"
     },
     "ToolCall": {
       "additionalProperties": false,

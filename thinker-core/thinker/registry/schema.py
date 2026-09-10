@@ -37,6 +37,7 @@ class RegistryCall(BaseModel):
     payload_style: str                             # "chat_completions_v1" | ...
     endpoint: Optional[str] = None
     aliases: List[str] = []                        # ["openai:multimodal-cheap"]
+    reasoning_effort: Optional[str] = None         # route-level default effort: none|low|medium|high (requires "reasoning_effort" cap)
 
     @field_validator("call_id")
     @classmethod

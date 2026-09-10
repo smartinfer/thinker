@@ -25,7 +25,7 @@ from .errors import ModelTurnError, ModelTurnErrorCode, ModelTurnProviderExcepti
 from .fake import FakeModelTurnProvider
 from .gemini import GeminiModelTurnProvider
 from .mlx import MLXModelTurnProvider
-from .models import Cost, ModelTurnRequest, ModelTurnResponse, Usage, json_safe
+from .models import Cost, ModelTurnRequest, ModelTurnResponse, Usage, json_safe, ReasoningEffort
 from .ollama import OllamaModelTurnProvider
 from .openai import OpenAIModelTurnProvider
 from .openai_compatible import OpenAICompatibleModelTurnProvider
@@ -104,6 +104,22 @@ class ModelTurnRuntime:
                     ),
                 )
 
+            # Reasoning-effort capability gate (provider-neutral). Effective effort
+            # = request value, else the route default. If set above "none", the
+            # resolved route MUST declare the "reasoning_effort" capability; else
+            # fail closed rather than silently ignore or blindly forward it.
+            _eff = self._effective_reasoning_effort(request, call)
+            if _eff is not None and _eff != ReasoningEffort.NONE and "reasoning_effort" not in call.caps:
+                return self._failure_response(
+                    request,
+                    started,
+                    ModelTurnError(
+                        code=ModelTurnErrorCode.MODEL_UNAVAILABLE,
+                        message="requested route does not declare the reasoning_effort capability",
+                    ),
+                    call,
+                )
+
             result_queue: queue.Queue[ProviderTurnResult | BaseException] = queue.Queue(maxsize=1)
 
             def invoke() -> None:
@@ -177,6 +193,7 @@ class ModelTurnRuntime:
                 resolved_route=call.call_id,
                 resolved_provider=outcome.resolved_provider or call.provider,
                 resolved_model=outcome.resolved_model or call.model_id,
+                reasoning_effort=self._effective_reasoning_effort(request, call),
                 assistant_content=outcome.assistant_content,
                 tool_calls=outcome.tool_calls,
                 structured_output=structured,
@@ -194,6 +211,17 @@ class ModelTurnRuntime:
             with self._lock:
                 if self._active.get(request.request_id) is cancel_event:
                     self._active.pop(request.request_id, None)
+
+    def _effective_reasoning_effort(self, request: ModelTurnRequest, call: RegistryCall) -> ReasoningEffort | None:
+        """Effective effort = request value, else the route default. Returns a
+        ReasoningEffort (or None if unset). An invalid route default raises, so a
+        misconfigured route fails closed rather than running at the wrong effort."""
+        if request.generation.reasoning_effort is not None:
+            return request.generation.reasoning_effort
+        route = getattr(call, "reasoning_effort", None)
+        if route:
+            return ReasoningEffort(route)
+        return None
 
     def _resolve(self, request: ModelTurnRequest) -> RegistryCall:
         caps: list[str] = [MODEL_TURN_V1]

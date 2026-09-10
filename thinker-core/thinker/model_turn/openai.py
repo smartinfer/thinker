@@ -161,6 +161,18 @@ class OpenAIModelTurnProvider:
                 )
         if request.continuation:
             payload["previous_response_id"] = request.continuation.token
+        # Reasoning effort (provider-aware). Effective = request value, else the
+        # route default. When set above "none", emit the OpenAI Responses
+        # reasoning object and fail closed on sampling params the model rejects.
+        _req_effort = request.generation.reasoning_effort
+        _effective_effort = _req_effort.value if _req_effort is not None else (call.reasoning_effort or None)
+        if _effective_effort and _effective_effort != "none":
+            if request.generation.temperature is not None or request.generation.top_p is not None:
+                raise _provider_error(
+                    ModelTurnErrorCode.MODEL_UNAVAILABLE,
+                    "reasoning_effort is incompatible with temperature/top_p for this model",
+                )
+            payload["reasoning"] = {"effort": _effective_effort}
         if request.generation.temperature is not None:
             payload["temperature"] = request.generation.temperature
         if request.generation.top_p is not None:

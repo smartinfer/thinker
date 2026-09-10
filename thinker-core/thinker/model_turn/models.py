@@ -30,6 +30,15 @@ class MessageRole(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
 
+class ReasoningEffort(str, Enum):
+    """Provider-neutral reasoning-effort level for a model turn. Absence (field
+    unset / None) preserves prior behavior; NONE explicitly disables reasoning.
+    Provider mapping is capability-gated at the route (see runtime dispatch)."""
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
 
 class ToolCall(StrictModel):
     call_id: str = Field(min_length=1)
@@ -81,6 +90,10 @@ class GenerationParameters(StrictModel):
     top_p: float | None = Field(default=None, gt=0.0, le=1.0)
     seed: int | None = None
     stop: tuple[str, ...] = ()
+    # Optional, provider-neutral reasoning effort. None = unspecified (preserve
+    # prior behavior / provider default); a set value is honored only by routes
+    # that declare the "reasoning_effort" capability (fail-closed otherwise).
+    reasoning_effort: ReasoningEffort | None = None
 
 
 class Continuation(StrictModel):
@@ -187,6 +200,10 @@ class ModelTurnResponse(StrictModel):
     resolved_route: str | None = None
     resolved_provider: str | None = None
     resolved_model: str | None = None
+    # Effective reasoning effort applied to this turn (request value, else the
+    # route default). None = none/absent, so "gpt-5.1 default" and "gpt-5.1 high"
+    # are distinguishable in provenance.
+    reasoning_effort: ReasoningEffort | None = None
     assistant_content: str | None = None
     tool_calls: tuple[ToolCall, ...] = ()
     structured_output: JsonValue | None = None
