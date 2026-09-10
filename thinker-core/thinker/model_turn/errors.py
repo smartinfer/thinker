@@ -18,6 +18,7 @@ class ModelTurnErrorCode(str, Enum):
     TOOL_CALL_MALFORMED = "ToolCallMalformed"
     STRUCTURED_OUTPUT_VIOLATION = "StructuredOutputViolation"
     UNKNOWN_PROVIDER_FAILURE = "UnknownProviderFailure"
+    INCOMPLETE = "Incomplete"
 
 
 class ModelTurnError(BaseModel):

@@ -38,6 +38,7 @@ class RegistryCall(BaseModel):
     endpoint: Optional[str] = None
     aliases: List[str] = []                        # ["openai:multimodal-cheap"]
     reasoning_effort: Optional[str] = None         # route-level default effort: none|low|medium|high (requires "reasoning_effort" cap)
+    max_output_tokens: Optional[int] = None        # route-level per-call output-token floor (reasoning models need headroom)
 
     @field_validator("call_id")
     @classmethod

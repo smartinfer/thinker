@@ -124,10 +124,17 @@ class OpenAIModelTurnProvider:
                 }
             )
 
+        # Route-configured per-call output-token floor: a reasoning route may raise
+        # the effective output budget so reasoning does not exhaust it before the
+        # model emits content. Generic (route data), never model-specific code.
+        max_out = request.generation.max_output_tokens
+        route_max = getattr(call, "max_output_tokens", None)
+        if route_max and route_max > max_out:
+            max_out = route_max
         payload: dict[str, Any] = {
             "model": call.model_id,
             "input": input_items,
-            "max_output_tokens": request.generation.max_output_tokens,
+            "max_output_tokens": max_out,
         }
         if request.system_instruction:
             payload["instructions"] = request.system_instruction
@@ -267,10 +274,18 @@ class OpenAIModelTurnProvider:
         status = str(data.get("status") or "completed")
         finish_reason = status
         incomplete = data.get("incomplete_details")
+        incomplete_reason: str | None = None
         if isinstance(incomplete, dict) and incomplete.get("reason"):
             finish_reason = str(incomplete["reason"])
+        # A VALID provider exchange can be non-actionable: status=incomplete with
+        # no message/tool call (e.g. reasoning consumed the whole output budget).
+        # Record the reason so the runtime returns a typed incomplete outcome
+        # (usage preserved) instead of tripping the success invariant. NOT an error.
+        if status == "incomplete" and not texts and not calls:
+            incomplete_reason = str(incomplete.get("reason")) if isinstance(incomplete, dict) and incomplete.get("reason") else "incomplete"
 
         return ProviderTurnResult(
+            incomplete_reason=incomplete_reason,
             resolved_provider="openai",
             resolved_model=(str(data["model"]) if data.get("model") else None),
             assistant_content="".join(texts) if texts else None,

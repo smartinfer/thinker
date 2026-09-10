@@ -46,6 +46,7 @@ calls:
     adapter: "openai"
     payload_style: "chat_completions_v1"
     reasoning_effort: "high"
+    max_output_tokens: 32768
     aliases: ["openai:reasoning-high"]
 
   - call_id: "gemini:gemini-2-5-flash.chat"

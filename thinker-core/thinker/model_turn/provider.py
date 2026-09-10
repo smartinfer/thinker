@@ -24,6 +24,10 @@ class ProviderTurnResult:
     usage: Usage = field(default_factory=Usage)
     finish_reason: str | None = None
     provider_metadata: dict[str, JsonValue] = field(default_factory=dict)
+    # Set when the provider returned a VALID but non-actionable response
+    # (status=incomplete with no message/tool/structured content). Carries the
+    # provider incomplete reason (e.g. "max_output_tokens"). Usage is still real.
+    incomplete_reason: str | None = None
 
 
 class ModelTurnProvider(Protocol):

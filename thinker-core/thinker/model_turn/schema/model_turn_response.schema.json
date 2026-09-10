@@ -95,7 +95,8 @@
         "MalformedResponse",
         "ToolCallMalformed",
         "StructuredOutputViolation",
-        "UnknownProviderFailure"
+        "UnknownProviderFailure",
+        "Incomplete"
       ],
       "title": "ModelTurnErrorCode",
       "type": "string"

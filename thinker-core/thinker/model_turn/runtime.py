@@ -178,6 +178,33 @@ class ModelTurnRuntime:
                     call,
                 )
 
+            # Valid but non-actionable provider response (status=incomplete with no
+            # content/tool call, e.g. reasoning consumed the output budget). Return
+            # a typed incomplete outcome preserving usage/provenance — never the
+            # success-invariant crash, and NOT a transport/malformed error.
+            if outcome.incomplete_reason:
+                cost = self.pricebook.cost(call, outcome.usage.input_tokens, outcome.usage.output_tokens)
+                incomplete_resp = ModelTurnResponse(
+                    request_id=request.request_id,
+                    thinker_version=self.thinker_version,
+                    thinker_revision=self.thinker_revision,
+                    requested_route=request.requested_route,
+                    resolved_route=call.call_id,
+                    resolved_provider=outcome.resolved_provider or call.provider,
+                    resolved_model=outcome.resolved_model or call.model_id,
+                    reasoning_effort=self._effective_reasoning_effort(request, call),
+                    usage=outcome.usage,
+                    cost=Cost(amount=cost),
+                    finish_reason=outcome.finish_reason,
+                    duration_ms=(time.monotonic() - started) * 1000.0,
+                    normalized_error=ModelTurnError(
+                        code=ModelTurnErrorCode.INCOMPLETE,
+                        message="provider returned an incomplete response: " + outcome.incomplete_reason,
+                    ),
+                )
+                self._observe(incomplete_resp)
+                return incomplete_resp
+
             self._validate_tool_calls(request, outcome)
             structured = self._validate_structured_output(request, outcome)
             cost = self.pricebook.cost(
