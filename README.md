@@ -2,6 +2,10 @@
 
 Unified, minimal LLM access with a registry-driven router and ThinkerQL request language.
 
+The [ThinkerQL 0.4 packet contract](docs/THINKERQL_V0_4.md) is the first step toward
+stateless library calls that preserve model output and return structured errors.
+The current execution API continues to use ThinkerQL 0.3; 0.4 is not wired into it yet.
+
 ## Overview
 
 Thinker provides a unified interface for accessing various LLM providers through a single request language (ThinkerQL) and a registry-driven routing system. The MVP supports OpenAI and local Ollama models with schema contracts, comprehensive testing, secure credential management, and real-time observability.

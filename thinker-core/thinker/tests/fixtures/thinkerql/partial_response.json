@@ -1,0 +1,68 @@
+{
+  "version": "0.4",
+  "request_id": "request-2",
+  "job_id": "job-1",
+  "turn_id": "turn-2",
+  "status": "incomplete",
+  "content": "The answer is",
+  "tool_calls": [
+    {
+      "call_id": "tool-2",
+      "name": "read_file",
+      "arguments": "{\"path\":"
+    }
+  ],
+  "error": {
+    "code": "BROKEN_STREAM",
+    "message": "Peer disconnected",
+    "retryable": true,
+    "partial_response": true
+  },
+  "usage": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "total_tokens": null
+  },
+  "cost_usd": null,
+  "continuation": {
+    "response_id": "resp-2",
+    "cursor": "opaque-cursor"
+  },
+  "invocations": [
+    {
+      "call_id": "inv-1",
+      "stage": "local",
+      "status": "completed",
+      "content": "Local suggestion",
+      "resolved_route": {
+        "route_id": "local:coder.chat",
+        "provider": "mlx",
+        "model": "local-coder"
+      },
+      "usage": {
+        "input_tokens": 21,
+        "output_tokens": 9,
+        "total_tokens": 30
+      },
+      "cost_usd": null
+    },
+    {
+      "call_id": "inv-2",
+      "parent_call_id": "inv-1",
+      "stage": "cloud",
+      "status": "incomplete",
+      "content": "The answer is",
+      "error": {
+        "code": "BROKEN_STREAM",
+        "message": "Peer disconnected",
+        "retryable": true,
+        "partial_response": true
+      },
+      "usage": {
+        "input_tokens": null,
+        "output_tokens": null
+      },
+      "cost_usd": null
+    }
+  ]
+}
