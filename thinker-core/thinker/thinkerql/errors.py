@@ -57,6 +57,7 @@ ERROR_CODES = frozenset(HERMES_REASON_CODES.values()) | {
     "PROTOCOL_ERROR",
     "ACCESS_DENIED",
     "LOCAL_RESOURCE_EXHAUSTED",
+    "UNSUPPORTED_REQUEST",
 }
 
 _CODE_GROUPS = {
@@ -78,7 +79,14 @@ _CODE_GROUPS = {
         "personal-team-blocked:spending-limit",
     ),
     "RATE_LIMITED": ("resource_exhausted", "throttled", "rate_limit_exceeded", "rate_limit_error"),
-    "PROVIDER_OVERLOADED": ("overloaded_error", "server_overload", "upstream_unavailable"),
+    "PROVIDER_OVERLOADED": (
+        "overloaded_error",
+        "server_overload",
+        "server_is_overloaded",
+        "upstream_unavailable",
+    ),
+    "CONNECTION_ERROR": ("econnreset", "econnrefused", "epipe"),
+    "TIMEOUT": ("etimedout",),
     "PROVIDER_ERROR": ("server_error", "api_error"),
     "CONTEXT_LIMIT": ("context_length_exceeded", "max_tokens_exceeded"),
     "MODEL_UNAVAILABLE": ("model_not_found", "model_not_available", "invalid_model"),
@@ -93,7 +101,12 @@ _CODE_GROUPS = {
         "prefill_memory_aborted",
         "omlx_prefill_memory_exceeded",
     ),
-    "BROKEN_STREAM": ("stream_interrupted", "incomplete_stream", "empty_stream"),
+    "BROKEN_STREAM": (
+        "stream_interrupted",
+        "incomplete_stream",
+        "empty_stream",
+        "err_stream_premature_close",
+    ),
     "CANCELLED": ("cancelled", "canceled", "request_cancelled", "request_aborted"),
     "PROTOCOL_ERROR": ("provider_stream_non_json_data", "malformed_provider_response"),
 }

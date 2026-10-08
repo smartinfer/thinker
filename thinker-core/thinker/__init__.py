@@ -10,6 +10,7 @@ Author: Anjan Goswami
 """
 
 from .core import Thinker
+from .modelcalls import model_call
 
-__all__ = ["Thinker"]
+__all__ = ["Thinker", "model_call"]
 __version__ = "0.2.0"

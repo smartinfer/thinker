@@ -764,5 +764,49 @@
       }
     },
     "expected": "CANCELLED"
+  },
+  {
+    "name": "forgecode-ECONNRESET",
+    "input": {
+      "body": {
+        "error": {
+          "code": "ECONNRESET"
+        }
+      }
+    },
+    "expected": "CONNECTION_ERROR"
+  },
+  {
+    "name": "forgecode-ETIMEDOUT",
+    "input": {
+      "body": {
+        "error": {
+          "code": "ETIMEDOUT"
+        }
+      }
+    },
+    "expected": "TIMEOUT"
+  },
+  {
+    "name": "forgecode-ERR_STREAM_PREMATURE_CLOSE",
+    "input": {
+      "body": {
+        "error": {
+          "code": "ERR_STREAM_PREMATURE_CLOSE"
+        }
+      }
+    },
+    "expected": "BROKEN_STREAM"
+  },
+  {
+    "name": "forgecode-server_is_overloaded",
+    "input": {
+      "body": {
+        "error": {
+          "code": "server_is_overloaded"
+        }
+      }
+    },
+    "expected": "PROVIDER_OVERLOADED"
   }
 ]

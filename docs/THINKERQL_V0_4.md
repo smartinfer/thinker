@@ -1,13 +1,96 @@
 # ThinkerQL 0.4 packet contract
 
-This change defines packets for the stateless library interface. It adds envelope
-parsing and provider-error classification, with offline fixtures. It does **not**
-change model execution, implement routing, run tools, repair output, or add a
-service. `Thinker.chat_ql` and `thinker.thinkerql.parse.parse_thinkerql` continue to
+This interface provides packets, provider-error classification, and an asynchronous
+`thinker.model_call` function. It makes one native HTTP request using a host-selected
+registry route, then returns a packet. It does not run tools, repair output, retry,
+switch providers, or add a service. `Thinker.chat_ql` and
+`thinker.thinkerql.parse.parse_thinkerql` continue to
 accept only the existing 0.3 contract. Do not send 0.4 packets to those functions.
 
 The 0.4 JSON schemas ship with the Python package and can also be used by a future
 native Go implementation. There is no Go runtime in this change.
+
+## Calling a model
+
+```python
+import asyncio
+from thinker import model_call
+from thinker.registry.loader import load_catalog
+from thinker.registry.store import RegistryStore
+
+catalog, sha = load_catalog("spec/registry.yaml")
+store = RegistryStore()
+store.apply_catalog(catalog, sha, "spec/registry.yaml")
+# Choose an existing chat route explicitly; a future routing function can do this.
+route = next(call for call in catalog.calls if call.kind == "chat" and call.provider == "openai")
+
+packet = {
+    "version": "0.4", "request_id": "request-1", "intent": "chat",
+    "messages": [{"role": "user", "parts": [{"type": "text", "text": "Hello"}]}],
+    "routing": {"route_id": route.call_id},
+}
+result = asyncio.run(model_call(packet, route=route))
+```
+
+In an async application, use `await model_call(...)`. Independent calls may run
+with `asyncio.gather`; synchronous worker threads may each use `asyncio.run`.
+Do not share an async client across different event loops. An optional
+`client=httpx.AsyncClient(...)` supports caller-managed pooling or a mock transport;
+Thinker leaves that client open. The default per-call client is closed afterward.
+The optional synchronous `credentials(provider)` callable defaults to the existing
+environment/keychain credential resolver and runs off the event loop.
+
+The selected route's `payload_style` determines the protocol:
+
+| Payload style | Native protocol |
+| --- | --- |
+| `chat_completions_v1` | OpenAI-compatible Chat Completions |
+| `responses_v1`, `openai_responses_v1` | OpenAI Responses |
+| `messages_v1` | Anthropic Messages |
+| `generateContent_v1beta` | Gemini GenerateContent |
+| `model_turn_v1` | Existing openai/anthropic/gemini adapter identity |
+
+Registry endpoints and provider identities are retained. Other payload styles
+return `UNSUPPORTED_REQUEST`. This is a direct library transport: it does not
+perform the legacy API's qualification admission or issue assurance evidence.
+Applications needing qualification must keep using their qualified execution path
+until they explicitly migrate their admission procedure.
+
+Current limits and behavior:
+
+- Only chat execution is wired. Difficulty is a hint for the host selecting the
+  supplied route; automatic model selection, native MLX/Ollama, and local-assist
+  orchestration remain separate work. OpenAI-compatible local HTTP endpoints can
+  use the existing `openai_compatible_local` adapter without credentials.
+- The function buffers one non-SSE provider response. `provider_options.stream=true`
+  is rejected explicitly. A broken response body returns exact received bytes in
+  `provider_data.raw_body_base64`; those bytes are not presented as complete model
+  text. Incremental SSE event decoding is not implemented here.
+- `timeout_ms` bounds credential lookup and HTTP execution. Cancelling the task
+  during execution aborts its transport and returns a `cancelled` packet. An
+  async task cancelled before its coroutine first runs cannot return a packet.
+- The default client does not retry or follow redirects. A caller-supplied HTTP
+  transport must also disable its own retries to preserve the one-attempt guarantee.
+- Requested JSON output is forwarded to the provider without schema downgrade or
+  local output validation. Unsupported constraints produce the provider's error.
+  Tool arguments and model text remain unchanged, even when invalid JSON.
+- Text and OpenAI image URL parts are mapped directly. Other media can be carried
+  as native `provider` parts; unsupported common representations return an error.
+  Responses reasoning items are replayed as native input items. Anthropic thinking
+  blocks and Gemini thought signatures can be replayed through native parts/tool
+  `provider_data`. Thinker does not invent or repair signatures.
+- Responses continuation is `{"response_id": "..."}`. For other protocols, replay
+  the transcript/native parts. Unknown continuation shapes are rejected explicitly.
+- Native `provider_options` may configure parameters such as tool choice or `n`.
+  They cannot overwrite model identity, transcript, tools, or continuation; duplicate
+  common/native settings return an error. `routing.reasoning` uses that provider's
+  native reasoning settings, rather than guessing equivalent effort levels.
+- Multiple tool calls are normalized. If a provider returns multiple choices or
+  candidates, convenience fields describe the first; all alternatives remain in
+  `provider_data`. Native usage is retained and unreported cost stays null.
+- Invalid request envelopes and unsupported settings return error packets with no
+  invocation. Provider attempts each have an invocation ID, route, result and timing.
+  Calls do not write packets, telemetry, or history to persistent storage.
 
 ## Public helpers
 
@@ -87,8 +170,8 @@ set `status: incomplete` with the error. Pass `stream_started=True` to the error
 classifier once model response data has arrived; it marks `partial_response`
 and distinguishes a disconnect during output from failure to connect. A timeout
 still has code `TIMEOUT`; cancellation still has code `CANCELLED`. Streaming frame
-decoding and converting async cancellation into packets belong to the future
-call implementation; the classifier does not consume streams or catch exceptions.
+decoding is not part of the classifier. `model_call` handles async cancellation
+and interrupted HTTP bodies; it does not consume SSE model events.
 
 `invocations` records local/cloud/direct subcalls with unique `call_id`, optional
 `parent_call_id`, route, output, usage, cost, timing, and errors. It can preserve
@@ -145,7 +228,7 @@ The taxonomy covers all 29 `FailoverReason` categories inspected in Hermes
 | unknown | UNKNOWN |
 
 Additional codes are `CONNECTION_ERROR`, `CONFLICT`, `CANCELLED`, `BROKEN_STREAM`,
-`PROTOCOL_ERROR`, `ACCESS_DENIED`, and `LOCAL_RESOURCE_EXHAUSTED`.
+`PROTOCOL_ERROR`, `ACCESS_DENIED`, `LOCAL_RESOURCE_EXHAUSTED`, and `UNSUPPORTED_REQUEST`.
 HTTP fallbacks include 408 timeout, 409 conflict, 429 rate limit, 401 authentication,
 403 access denial, 400 invalid request, and all 5xx server errors (503/529 overload,
 504 timeout). Native details refine these: a context-limit 400, exhausted-quota
@@ -165,11 +248,16 @@ partial responses, per-invocation usage, unknown cost, concurrent independence,
 and the explicit 0.3/0.4 boundary. `test_thinkerql_errors.py` covers native error
 fixtures, each Hermes category, transport exceptions, cancellation, and retry
 metadata. Shared JSON fixtures are under `thinker/tests/fixtures/thinkerql`.
+`test_modelcalls.py` exercises all four native protocol mappings through mocked
+HTTP transports, correction replay, concurrent calls, actual task cancellation,
+deadlines, partial bytes, native error aliases, and client lifecycle. These tests
+make no live model calls and do not establish provider/model qualification.
 
 Run from the repository root:
 
 ```sh
 python -m pytest thinker-core/thinker/tests/test_thinkerql_packets.py \
   thinker-core/thinker/tests/test_thinkerql_errors.py \
+  thinker-core/thinker/tests/test_modelcalls.py \
   thinker-core/thinker/tests/test_thinkerql_parse.py
 ```
