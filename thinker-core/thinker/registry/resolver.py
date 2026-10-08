@@ -62,3 +62,12 @@ def resolve_call(
         if candidates: return candidates[0]
         raise ValueError("ALIAS_UNRESOLVED")
     raise ValueError("ROUTING_INSUFFICIENT")  # policy-based selection handled elsewhere
+
+
+def resolve_qualification(thinker, call):
+    """Select the current immutable PASS for the resolved exact execution identity.
+
+    No fallback to another target or an older PASS after a failed requalification.
+    """
+    from ..qualification import require_pass
+    return require_pass(thinker, call)

@@ -8,6 +8,7 @@ Author: Anjan Goswami
 """
 
 import time
+import copy
 from typing import Dict, Any
 from .thinkerql.parse import parse_thinkerql
 from .registry.resolver import resolve_call
@@ -20,10 +21,15 @@ from .observability.metrics import record_request
 class Thinker:
     """Main Thinker class for unified LLM access."""
     
-    def __init__(self, store: RegistryStore, pricebook: PriceBook):
+    def __init__(self, store: RegistryStore, pricebook: PriceBook, *,
+                 qualification_profile=None, qualification_root=None, qualification_config=None):
         """Initialize Thinker instance."""
         self.store = store
         self.pricebook = pricebook
+        self.qualification_profile = qualification_profile
+        self.qualification_root = qualification_root
+        self.qualification_config = qualification_config or {}
+        self._qualification_probe = None
     
     @classmethod
     def from_files(cls, registry_path: str):
@@ -35,7 +41,14 @@ class Thinker:
         return cls(store, pricebook)
     
     def chat_ql(self, ql: Dict[str, Any]):
-        """Process ThinkerQL request."""
+        """Ordinary execution never grants itself permission to qualify a target."""
+        return self._chat_ql(ql)
+
+    def _chat_ql(self, ql: Dict[str, Any], probe=None):
+        """Existing resolver/adapter/record path with host qualification admission."""
+        ql = copy.deepcopy(ql)
+        context = None
+        recorded = False
         start_time = time.time()
         
         try:
@@ -53,10 +66,23 @@ class Thinker:
                 need_caps=req.need_caps
             )
             
+            # Only the deterministic local echo is exempt. Even local model servers
+            # require qualification; public request fields cannot authorize probes.
+            if self.qualification_profile is not None:
+                from .qualification import begin
+                call = call.model_copy(deep=True)
+                context = begin(self, ql, call, probe)
+            elif not (call.provider == "local" and call.adapter == "local" and call.model_id == "echo"):
+                raise ValueError("NOT_QUALIFIED: configure a frozen application profile")
+
             # Autoshrink if needed
             max_output_tokens = req.instructions.get("max_output_tokens", 256)
             in_tokens = count_tokens(req)
             
+            if context is not None and (
+                in_tokens > call.limits.max_input_tokens or max_output_tokens > call.limits.max_output_tokens
+            ):
+                raise ValueError("FROZEN_CONTRACT_EXCEEDS_CONTEXT: autoshrink prohibited")
             autoshrink_trace = []
             step = 0
             
@@ -79,9 +105,22 @@ class Thinker:
                     break
             
             # Get adapter and make the call
-            adapter = get_adapter(call.adapter, call.endpoint)
+            if context is not None:
+                from .adapters.planned import PlannedAdapter
+                adapter = PlannedAdapter(context['target']['adapter_configuration'], context['directory'] / 'transport')
+            else:
+                adapter = get_adapter(call.adapter, call.endpoint)
             resp = adapter.chat(req, call)
             
+            if context is not None:
+                from .qualification import assess
+                resp.qualification = assess(self, context, resp.execution)
+                recorded = True
+                if probe is not None:
+                    probe['result'] = resp.qualification
+                if resp.qualification['application_status'] != 'PASS':
+                    resp.error = 'APPLICATION_' + resp.qualification['application_status']
+
             # Calculate cost
             resp.cost_usd = self.pricebook.cost(call, resp.tokens["input"], resp.tokens["output"])
             resp.model = call.model_id
@@ -89,7 +128,7 @@ class Thinker:
             resp.autoshrink_trace = autoshrink_trace if autoshrink_trace else None
             
             # Validate JSON schema if present
-            if req.instructions.get("json_schema"):
+            if context is None and req.instructions.get("json_schema"):
                 is_valid = validate_json_schema(resp.text, req.instructions["json_schema"])
                 if not is_valid:
                     resp.error = "JSON_SCHEMA_VALIDATION_FAILED"
@@ -104,12 +143,18 @@ class Thinker:
                 output_tokens=resp.tokens["output"],
                 latency_ms=latency_ms,
                 cost_usd=resp.cost_usd,
-                status="success"
+                status="error" if context is not None and resp.error else "success",
+                error_code=resp.error if context is not None else None
             )
             
             return resp
             
         except Exception as e:
+            if context is not None and not recorded:
+                from .qualification import assess
+                evidence = assess(self, context, failure=type(e).__name__ + ': ' + str(e))
+                if probe is not None:
+                    probe['result'] = evidence
             # Record metrics for failed request
             latency_ms = (time.time() - start_time) * 1000
             record_request(

@@ -25,26 +25,6 @@
           "title": "Max Output Tokens",
           "type": "integer"
         },
-        "seed": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Seed"
-        },
-        "stop": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "title": "Stop",
-          "type": "array"
-        },
         "temperature": {
           "anyOf": [
             {
@@ -72,9 +52,75 @@
           ],
           "default": null,
           "title": "Top P"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "stop": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Stop",
+          "type": "array"
         }
       },
       "title": "GenerationParameters",
+      "type": "object"
+    },
+    "InferencePolicy": {
+      "additionalProperties": false,
+      "description": "Opt-in planned execution; never implicitly applied to legacy V1 calls.",
+      "properties": {
+        "version": {
+          "const": "thinker.inference-policy.v1",
+          "default": "thinker.inference-policy.v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "expected_model": {
+          "minLength": 1,
+          "title": "Expected Model",
+          "type": "string"
+        },
+        "schema_policy": {
+          "default": "NATIVE_REQUIRED",
+          "enum": [
+            "NATIVE_REQUIRED",
+            "ALLOW_EMULATION"
+          ],
+          "title": "Schema Policy",
+          "type": "string"
+        },
+        "max_attempts": {
+          "const": 1,
+          "default": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "tool_policy": {
+          "const": "NONE",
+          "default": "NONE",
+          "title": "Tool Policy",
+          "type": "string"
+        },
+        "thinking": {
+          "$ref": "#/$defs/ThinkingControl"
+        }
+      },
+      "required": [
+        "expected_model"
+      ],
+      "title": "InferencePolicy",
       "type": "object"
     },
     "JsonValue": {},
@@ -90,6 +136,9 @@
     "ModelMessage": {
       "additionalProperties": false,
       "properties": {
+        "role": {
+          "$ref": "#/$defs/MessageRole"
+        },
         "content": {
           "anyOf": [
             {
@@ -101,9 +150,6 @@
           ],
           "default": null,
           "title": "Content"
-        },
-        "role": {
-          "$ref": "#/$defs/MessageRole"
         },
         "tool_calls": {
           "default": [],
@@ -120,16 +166,53 @@
       "title": "ModelMessage",
       "type": "object"
     },
+    "ThinkingControl": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "default": "provider_default",
+          "enum": [
+            "provider_default",
+            "disabled",
+            "effort",
+            "budget",
+            "adaptive"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "budget_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Tokens"
+        }
+      },
+      "title": "ThinkingControl",
+      "type": "object"
+    },
     "ToolCall": {
       "additionalProperties": false,
       "properties": {
-        "arguments": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "title": "Arguments",
-          "type": "object"
-        },
         "call_id": {
           "minLength": 1,
           "title": "Call Id",
@@ -139,6 +222,13 @@
           "minLength": 1,
           "title": "Name",
           "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Arguments",
+          "type": "object"
         }
       },
       "required": [
@@ -152,6 +242,12 @@
     "ToolDefinition": {
       "additionalProperties": false,
       "properties": {
+        "name": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Name",
+          "type": "string"
+        },
         "description": {
           "minLength": 1,
           "title": "Description",
@@ -163,12 +259,6 @@
           },
           "title": "Input Schema",
           "type": "object"
-        },
-        "name": {
-          "minLength": 1,
-          "pattern": "^[A-Za-z0-9_-]+$",
-          "title": "Name",
-          "type": "string"
         },
         "strict": {
           "default": true,
@@ -192,13 +282,13 @@
           "title": "Call Id",
           "type": "string"
         },
+        "output": {
+          "$ref": "#/$defs/JsonValue"
+        },
         "is_error": {
           "default": false,
           "title": "Is Error",
           "type": "boolean"
-        },
-        "output": {
-          "$ref": "#/$defs/JsonValue"
         }
       },
       "required": [
@@ -211,34 +301,6 @@
   },
   "additionalProperties": false,
   "properties": {
-    "continuation": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/Continuation"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null
-    },
-    "generation": {
-      "$ref": "#/$defs/GenerationParameters"
-    },
-    "messages": {
-      "items": {
-        "$ref": "#/$defs/ModelMessage"
-      },
-      "title": "Messages",
-      "type": "array"
-    },
-    "metadata": {
-      "additionalProperties": {
-        "$ref": "#/$defs/JsonValue"
-      },
-      "title": "Metadata",
-      "type": "object"
-    },
     "protocol_version": {
       "const": "thinker.model-turn.v1",
       "default": "thinker.model-turn.v1",
@@ -256,6 +318,41 @@
       "title": "Requested Route",
       "type": "string"
     },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/ModelMessage"
+      },
+      "title": "Messages",
+      "type": "array"
+    },
+    "system_instruction": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "System Instruction"
+    },
+    "tools": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ToolDefinition"
+      },
+      "title": "Tools",
+      "type": "array"
+    },
+    "tool_results": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ToolResult"
+      },
+      "title": "Tool Results",
+      "type": "array"
+    },
     "response_schema": {
       "anyOf": [
         {
@@ -271,17 +368,30 @@
       "default": null,
       "title": "Response Schema"
     },
-    "system_instruction": {
+    "inference_policy": {
       "anyOf": [
         {
-          "type": "string"
+          "$ref": "#/$defs/InferencePolicy"
         },
         {
           "type": "null"
         }
       ],
-      "default": null,
-      "title": "System Instruction"
+      "default": null
+    },
+    "generation": {
+      "$ref": "#/$defs/GenerationParameters"
+    },
+    "continuation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Continuation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "timeout_ms": {
       "default": 30000,
@@ -290,21 +400,12 @@
       "title": "Timeout Ms",
       "type": "integer"
     },
-    "tool_results": {
-      "default": [],
-      "items": {
-        "$ref": "#/$defs/ToolResult"
+    "metadata": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
       },
-      "title": "Tool Results",
-      "type": "array"
-    },
-    "tools": {
-      "default": [],
-      "items": {
-        "$ref": "#/$defs/ToolDefinition"
-      },
-      "title": "Tools",
-      "type": "array"
+      "title": "Metadata",
+      "type": "object"
     }
   },
   "required": [

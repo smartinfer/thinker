@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import signal
 import threading
 from pathlib import Path
@@ -28,6 +29,8 @@ def main() -> None:
         help="optional local-model alias JSON (defaults to the standard user config when present)",
     )
     parser.add_argument("--no-local-models", action="store_true")
+    parser.add_argument("--inference-profiles", type=Path, help="host-owned exact-route capability profiles JSON")
+    parser.add_argument("--inference-audit-root", type=Path, help="opt-in private immutable raw transport artifacts")
     args = parser.parse_args()
 
     catalog, checksum = load_catalog(args.registry)
@@ -35,7 +38,12 @@ def main() -> None:
     store.apply_catalog(catalog, checksum, args.registry)
     if not args.no_local_models:
         apply_local_models(store, args.local_models)
-    runtime = ModelTurnRuntime(store, PriceBook(), thinker_revision=args.revision)
+    from .inference_contract import CapabilityProfile
+    profiles = {}
+    if args.inference_profiles:
+        profiles = {k: CapabilityProfile.model_validate(v) for k, v in json.loads(args.inference_profiles.read_text()).items()}
+    runtime = ModelTurnRuntime(store, PriceBook(), thinker_revision=args.revision,
+        inference_profiles=profiles, inference_audit_root=args.inference_audit_root)
     server = ModelTurnHTTPServer((args.host, args.port), runtime)
     stopping = threading.Event()
 

@@ -17,6 +17,7 @@ from pydantic import (
 )
 
 from .errors import ModelTurnError
+from .inference_contract import InferenceOutcome, InferencePlan, InferencePolicy
 
 PROTOCOL_VERSION: Final = "thinker.model-turn.v1"
 
@@ -144,6 +145,7 @@ class ModelTurnRequest(StrictModel):
     tools: tuple[ToolDefinition, ...] = ()
     tool_results: tuple[ToolResult, ...] = ()
     response_schema: dict[str, JsonValue] | None = None
+    inference_policy: InferencePolicy | None = None
     generation: GenerationParameters = Field(default_factory=GenerationParameters)
     continuation: Continuation | None = None
     timeout_ms: int = Field(default=30_000, ge=1, le=3_600_000)
@@ -191,16 +193,19 @@ class ModelTurnResponse(StrictModel):
     tool_calls: tuple[ToolCall, ...] = ()
     structured_output: JsonValue | None = None
     continuation: Continuation | None = None
-    usage: Usage = Field(default_factory=Usage)
-    cost: Cost = Field(default_factory=Cost)
+    usage: Usage | None = Field(default_factory=Usage)
+    cost: Cost | None = Field(default_factory=Cost)
     finish_reason: str | None = None
     duration_ms: float = Field(default=0.0, ge=0.0)
     normalized_error: ModelTurnError | None = None
+    inference_plan: InferencePlan | None = None
+    inference_outcome: InferenceOutcome | None = None
 
     @model_validator(mode="after")
     def success_has_output(self) -> ModelTurnResponse:
         if (
-            self.normalized_error is None
+            self.inference_outcome is None
+            and self.normalized_error is None
             and self.assistant_content is None
             and not self.tool_calls
             and self.structured_output is None
