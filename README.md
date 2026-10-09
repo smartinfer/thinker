@@ -5,6 +5,8 @@ Unified, minimal LLM access with a registry-driven router and ThinkerQL request 
 The [ThinkerQL 0.4 library API](docs/THINKERQL_V0_4.md) provides asynchronous
 `model_call` with preserved model output and structured errors. The legacy
 `Thinker.chat_ql` API continues to use ThinkerQL 0.3.
+Calls now use the existing metrics collector and offer opt-in redacted debug
+snapshots through local, S3, or GCS recorders. See the linked guide for usage.
 
 ## Overview
 

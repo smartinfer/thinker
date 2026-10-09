@@ -97,7 +97,7 @@ class Dashboard:
         header_text.append("Thinker Core Dashboard", style="bold blue")
         header_text.append(f" | Requests: {total_requests:,}", style="white")
         header_text.append(f" | Success: {success_rate:.1f}%", style="green" if success_rate >= 95 else "yellow")
-        header_text.append(f" | Cost: ${total_cost:.4f}", style="cyan")
+        header_text.append(" | Cost: " + ("unknown" if total_cost is None else f"${total_cost:.4f}"), style="cyan")
         
         return Panel(Align.center(header_text), style="blue")
     
@@ -112,9 +112,11 @@ class Dashboard:
         table.add_row("Total Requests", f"{stats.get('total_requests', 0):,}", "")
         table.add_row("Successful", f"{stats.get('successful_requests', 0):,}", 
                      f"{stats.get('success_rate', 0):.1f}% success rate")
-        table.add_row("Total Tokens", f"{stats.get('total_input_tokens', 0) + stats.get('total_output_tokens', 0):,}", 
-                     f"{stats.get('total_input_tokens', 0):,} in + {stats.get('total_output_tokens', 0):,} out")
-        table.add_row("Total Cost", f"${stats.get('total_cost', 0):.4f}", "")
+        inputs, outputs = stats.get('total_input_tokens', 0), stats.get('total_output_tokens', 0)
+        token_text = "unknown" if inputs is None or outputs is None else f"{inputs + outputs:,}"
+        table.add_row("Total Tokens", token_text, f"{inputs if inputs is not None else 'unknown'} in + {outputs if outputs is not None else 'unknown'} out")
+        cost = stats.get('total_cost', 0)
+        table.add_row("Total Cost", "unknown" if cost is None else f"${cost:.4f}", "")
         
         # Performance metrics
         avg_latency = stats.get('avg_latency', 0)
@@ -141,14 +143,16 @@ class Dashboard:
         
         for provider, stats in provider_stats.items():
             success_rate = stats.get('success_rate', 0)
-            total_tokens = stats.get('total_input_tokens', 0) + stats.get('total_output_tokens', 0)
+            inputs, outputs = stats.get('total_input_tokens', 0), stats.get('total_output_tokens', 0)
+            total_tokens = None if inputs is None or outputs is None else inputs + outputs
+            cost = stats.get('total_cost', 0)
             
             table.add_row(
                 provider,
                 f"{stats.get('total_requests', 0):,}",
                 f"{success_rate:.1f}%",
-                f"{total_tokens:,}",
-                f"${stats.get('total_cost', 0):.4f}",
+                "unknown" if total_tokens is None else f"{total_tokens:,}",
+                "unknown" if cost is None else f"${cost:.4f}",
                 f"{stats.get('avg_latency', 0):.1f}ms"
             )
         

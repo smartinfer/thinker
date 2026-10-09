@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import hashlib
 import time
 import uuid
 from datetime import UTC, datetime
@@ -10,6 +11,7 @@ import httpx
 
 from .model_turn.http_common import resolve_credential
 from .model_turn.inference_adapters import strict_json
+from .observability.trace import observe_call
 from .registry.schema import RegistryCall
 from .thinkerql import classify_error, parse_request, parse_response
 from .thinkerql.wire import UnsupportedRequest, lift, prepare
@@ -21,6 +23,9 @@ async def model_call(
     route: RegistryCall,
     credentials=resolve_credential,
     client: httpx.AsyncClient | None = None,
+    recorder=None,
+    debug: bool = False,
+    metrics=True,
 ) -> dict:
     """Perform at most one HTTP request and return a ThinkerQL 0.4 result.
 
@@ -33,8 +38,14 @@ async def model_call(
     packet. A caller-owned client remains open. The default client has no retries
     or redirects. This function buffers one non-SSE response; received bytes
     survive a timeout/disconnect/cancellation in provider_data.raw_body_base64.
+
+    Metrics use the existing collector by default; metrics=False disables them.
+    A recorder writes summaries unless debug=True enables full redacted packet
+    snapshots. Debug without a recorder uses THINKER_TRACE_DIR or ~/.thinker/traces.
+    Storage failures appear in metadata.observability, not the model error.
     """
     started = datetime.now(UTC).isoformat()
+    invocation_id = str(uuid.uuid4())
     clock = time.monotonic()
     source = packet if isinstance(packet, dict) else {}
     result = {
@@ -52,6 +63,9 @@ async def model_call(
     raw = bytearray()
     status, headers = None, {}
     provider, protocol, body = None, None, None
+    url, key = None, None
+    request_headers = dict(client.headers) if client is not None else {}
+    request_raw = None
     own_client = client is None
     phase = "request"
     try:
@@ -90,6 +104,7 @@ async def model_call(
                     auth_headers["x-goog-api-key"] = key
                 elif key:
                     auth_headers["Authorization"] = "Bearer " + key
+                request_headers.update(auth_headers)
                 if client is None:
                     client = httpx.AsyncClient(
                         timeout=timeout, follow_redirects=False, trust_env=False
@@ -104,6 +119,9 @@ async def model_call(
                     follow_redirects=False,
                 ) as response:
                     status = response.status_code
+                    request_headers = dict(response.request.headers)
+                    if debug:
+                        request_raw = response.request.content
                     headers = dict(response.headers)
                     async for chunk in response.aiter_bytes():
                         raw.extend(chunk)
@@ -173,7 +191,46 @@ async def model_call(
         for key, value in result.items()
         if key not in {"version", "request_id", "job_id", "turn_id"}
     }
-    invocation.update(call_id=str(uuid.uuid4()), stage="direct")
+    invocation.update(call_id=invocation_id, stage="direct")
     # A failed preparation/credential lookup made no model invocation.
     result["invocations"] = [invocation] if phase in {"transport", "response"} else []
+    result = parse_response(result)
+    native_request = (
+        {
+            "protocol": protocol,
+            "url": url,
+            "headers": request_headers,
+            "body": body,
+            "raw_body_base64": base64.b64encode(request_raw).decode()
+            if request_raw is not None
+            else None,
+            "raw_sha256": hashlib.sha256(request_raw).hexdigest()
+            if request_raw is not None
+            else None,
+        }
+        if debug
+        else None
+    )
+    native_response = (
+        {
+            "http_status": status,
+            "headers": headers,
+            "raw_body_base64": base64.b64encode(raw).decode(),
+            "raw_sha256": hashlib.sha256(raw).hexdigest(),
+        }
+        if debug
+        else None
+    )
+    receipt = await observe_call(
+        result,
+        invocation_id=invocation_id,
+        packet=packet,
+        native_request=native_request,
+        native_response=native_response,
+        recorder=recorder,
+        debug=debug,
+        metrics=metrics,
+        secrets=(key,),
+    )
+    result.setdefault("metadata", {})["observability"] = receipt
     return parse_response(result)

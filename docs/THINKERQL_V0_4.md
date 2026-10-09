@@ -89,8 +89,110 @@ Current limits and behavior:
   candidates, convenience fields describe the first; all alternatives remain in
   `provider_data`. Native usage is retained and unreported cost stays null.
 - Invalid request envelopes and unsupported settings return error packets with no
-  invocation. Provider attempts each have an invocation ID, route, result and timing.
-  Calls do not write packets, telemetry, or history to persistent storage.
+  model invocation. Provider attempts each have an invocation ID, route, result and
+  timing. Metrics use the existing collector; full trace recording is opt-in.
+
+## Metrics and debug recording
+
+```python
+from thinker import model_call
+from thinker.observability import TraceRecorder
+
+recorder = TraceRecorder.local("./thinker-traces")
+result = await model_call(packet, route=route, recorder=recorder, debug=True)
+receipt = result["metadata"]["observability"]
+print(receipt["trace"]["uri"])
+```
+
+`debug=True` records the input packet, prepared native request, captured HTTP request
+headers/body, response headers/raw bytes, and final model result. The final snapshot
+also contains IDs, route, reported usage, cost, status, errors, and model-call timing.
+The request raw bytes are captured once a response object is available; an earlier
+connection failure may have only the prepared request. Interrupted response bytes
+are retained. Raw-byte fields are base64 encoded **after redaction**; accompanying
+SHA-256 fields identify the original bytes, not the redacted copy.
+
+With `debug=True` and no recorder, local snapshots go to `THINKER_TRACE_DIR`, or
+`~/.thinker/traces` by default. Supplying a recorder with `debug=False` writes only a
+summary: identifiers, route identity, outcome, timing and usage, without prompts,
+model content, native packets or headers. No recorder and `debug=False` writes no
+trace files. This feature does not load history into later model calls.
+
+Each call receives a unique invocation ID before execution. The receipt carries
+that ID even if preparation fails before any model attempt. Model attempts use the
+same ID in `invocations[].call_id`. Request IDs may be reused without overwriting
+snapshots. Object layout is:
+
+```text
+jobs/<SHA256(job_id)>/turns/<SHA256(turn_id)>/<invocation_id>.json
+```
+
+Missing job/turn IDs use the request ID for grouping. Hashing keeps caller-controlled
+IDs out of paths. Local writes publish complete files atomically with mode `0600`
+and refuse to overwrite existing snapshots. The recorder has no mutable per-call
+state and may be shared across concurrent calls.
+
+Read a local snapshot using the returned path:
+
+```python
+import json
+from pathlib import Path
+
+snapshot = json.loads(Path(receipt["trace"]["uri"]).read_text())
+```
+
+Snapshots are written when a call returns, including provider failure, timeout,
+cancellation, and invalid requests. A killed process may have no final snapshot.
+The snapshot's response is the model result **before** the recording receipt is
+added. Call completion is recorded; application job completion remains the host's
+decision. Job and turn IDs group calls for later review.
+
+The recorder removes credential fields, known provider credentials (including
+common URL/JSON/base64 encodings), authorization values, cookies, and URL userinfo.
+It also redacts captured raw-byte fields. Caller-visible packets are unchanged.
+This is credential redaction, not general PII detection. `extra_secrets=(...)` and
+`redactor=callable` on `TraceRecorder` support application-specific removal before
+anything reaches storage. Debug snapshots intentionally retain application content.
+
+Cloud storage is optional and takes existing SDK clients; no SDK is imported or
+cloud credential discovered by the recorder itself:
+
+```python
+from thinker.observability import TraceRecorder, S3TraceStore, GCSTraceStore
+
+s3_recorder = TraceRecorder(S3TraceStore(s3_client, "my-bucket", prefix="thinker"))
+gcs_recorder = TraceRecorder(GCSTraceStore(gcs_client.bucket("my-bucket"), prefix="thinker"))
+result = await model_call(packet, route=route, recorder=s3_recorder, debug=True)
+```
+
+Configure authentication and timeouts on the supplied clients. S3 uses conditional
+creation with [`IfNoneMatch="*"`](https://docs.aws.amazon.com/boto3/latest/reference/services/s3/client/put_object.html);
+GCS uses `if_generation_match=0` on
+[`upload_from_string`](https://github.com/googleapis/python-storage/blob/main/google/cloud/storage/blob.py).
+GCS uploads use a configurable timeout (30 seconds by default) and disable SDK
+retries. S3 uses the supplied client's retry policy. These adapters are tested with
+mock clients; this change performs no live cloud upload.
+
+Metrics reuse the existing SQLite `requests` table and dashboard. Model calls honor
+`THINKER_ENABLE_METRICS` and `THINKER_METRICS_DB`; `metrics=False` disables collection
+for one call, and `metrics=collector` injects an existing `MetricsCollector`.
+Metrics contain no prompt/response bodies. Rows retain request/job/turn/invocation
+IDs and the exact call outcome, so they can be queried by job.
+
+Existing databases migrate transactionally to nullable token/cost columns, preserving
+historical rows. Missing usage/cost stays SQL NULL. Aggregate totals are unknown if
+any included row is unknown; `unknown_input_requests`, `unknown_output_requests`,
+and `unknown_cost_requests` expose the missing-data counts. The dashboard displays
+`unknown` instead of zero for those totals. Completion counts are transport outcomes,
+not application acceptance scores.
+
+Metrics and storage run off the event loop and are awaited. Failures do not alter the
+model result: `metadata.observability` reports `recorded`, `disabled`, `failed`, or
+`interrupted` for each sink, plus storage error type without exception text. If the
+caller cancels during a storage write, its worker may still finish; `interrupted`
+does not claim the write failed. The receipt includes observation duration separately
+from model-call duration. Slow storage adds return latency; model `timeout_ms` does
+not include persistence. No OpenTelemetry exporter or trace-viewer UI is added.
 
 ## Public helpers
 
@@ -184,7 +286,8 @@ claiming zero. Preserve native usage fields in `usage.provider_data`.
 `started_at` and `completed_at` are UTC RFC 3339 timestamps when available;
 `duration_ms` is elapsed wall time. `resolved_route` records the actual provider,
 model, and settings. `cost_usd` is optional; this change adds no pricing estimator.
-No recorder, telemetry exporter, or S3/GCS storage is implemented here.
+The optional recorder persists these observations; there is no pricing estimator
+or OpenTelemetry exporter in this change.
 
 ## Errors and host recovery
 
@@ -252,6 +355,9 @@ metadata. Shared JSON fixtures are under `thinker/tests/fixtures/thinkerql`.
 HTTP transports, correction replay, concurrent calls, actual task cancellation,
 deadlines, partial bytes, native error aliases, and client lifecycle. These tests
 make no live model calls and do not establish provider/model qualification.
+`test_call_observability.py` covers redaction, concurrent trace writes, migration of
+legacy metrics, unknown-value dashboard rendering, interrupted calls, and mocked
+S3/GCS conditional uploads.
 
 Run from the repository root:
 

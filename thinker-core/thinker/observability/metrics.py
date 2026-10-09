@@ -94,6 +94,32 @@ class MetricsCollector:
             Dictionary with aggregated statistics
         """
         return self.storage.get_stats(since=since, until=until, provider=provider)
+
+    def record_packet(self, packet: dict, invocation_id: str) -> bool:
+        """Record a 0.4 call without fabricating usage or losing correlation IDs.
+
+        Unlike the legacy best-effort method, errors propagate to the call's
+        observability receipt; they never replace the model result.
+        """
+        if not self.enabled:
+            return False
+        route = packet.get("resolved_route") or {}
+        usage = packet.get("usage") or {}
+        self.storage.record_request(
+            request_id=packet["request_id"],
+            provider=route.get("provider") or "unknown",
+            model=route.get("model") or "unknown",
+            call_id=route.get("route_id") or "unknown",
+            input_tokens=usage.get("input_tokens"),
+            output_tokens=usage.get("output_tokens"),
+            latency_ms=packet["duration_ms"],
+            cost_usd=packet.get("cost_usd"),
+            status="success" if packet["status"] == "completed" else "error",
+            error_code=(packet.get("error") or {}).get("code"),
+            job_id=packet.get("job_id"), turn_id=packet.get("turn_id"),
+            invocation_id=invocation_id, outcome=packet["status"],
+        )
+        return True
     
     def get_provider_stats(self, since: Optional[float] = None) -> Dict[str, Dict[str, Any]]:
         """
