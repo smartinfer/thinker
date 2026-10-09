@@ -6,6 +6,10 @@ Start with the [Python library user manual](docs/USER_MANUAL.md) for direct mode
 calls, optional caller-owned output constraints, concurrency, errors, and tracing.
 Automatic routing is deferred; debug tracing is off by default.
 
+The native [Go library and manual](docs/GO_USER_MANUAL.md) provide `ModelCall`
+with the same packet contract, caller-owned goroutines, and context cancellation.
+It requires no Python runtime or Thinker HTTP service.
+
 The [ThinkerQL 0.4 packet reference](docs/THINKERQL_V0_4.md) provides asynchronous
 `model_call` with preserved model output and structured errors. The legacy
 `Thinker.chat_ql` API continues to use ThinkerQL 0.3.

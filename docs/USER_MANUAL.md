@@ -9,6 +9,8 @@ tool proposals, usage, or an error.
 This manual covers the new Python library path. It needs no Thinker HTTP service.
 Automatic routing and local-assistance orchestration are deferred. Legacy APIs
 remain available, but their behavior differs; see [Migration](#migration).
+For the native Go interface, goroutines, and context cancellation, see the
+[Go user manual](GO_USER_MANUAL.md).
 
 ## Contents
 
@@ -556,8 +558,9 @@ commands use this new function.
 The new path does not issue qualification or assurance evidence. Applications
 that depend on those gates must retain them explicitly when migrating. The old
 code has not been removed; Dolphin and SIF callers are not automatically migrated
-by installing this branch. No native Go implementation, automatic router,
-local-assistance loop, or SSE decoder is included yet.
+by installing this branch. A native Go library is available separately in
+`thinker-go/`; see its manual for configuration and observability differences.
+Automatic routing, a local-assistance loop, and an SSE decoder remain deferred.
 
 ## Troubleshooting and testing
 

@@ -10,8 +10,10 @@ switch providers, or add a service. `Thinker.chat_ql` and
 `thinker.thinkerql.parse.parse_thinkerql` continue to
 accept only the existing 0.3 contract. Do not send 0.4 packets to those functions.
 
-The 0.4 JSON schemas ship with the Python package and can also be used by a future
-native Go implementation. There is no Go runtime in this change.
+The 0.4 JSON schemas ship with the Python package and are embedded in the native
+[Go library](GO_USER_MANUAL.md). A development sync check guards against contract
+drift. The Go library calls providers directly without a Python runtime or Thinker
+HTTP service; Dolphin transport migration remains separate.
 
 ## Calling a model
 

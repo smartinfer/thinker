@@ -1,0 +1,334 @@
+{
+  "hermes": {
+    "auth": "AUTHENTICATION_FAILED",
+    "auth_permanent": "AUTHENTICATION_PERMANENT",
+    "billing": "QUOTA_EXHAUSTED",
+    "content_policy_blocked": "CONTENT_BLOCKED",
+    "context_overflow": "CONTEXT_LIMIT",
+    "format_error": "REQUEST_REJECTED",
+    "image_corrupt": "IMAGE_CORRUPT",
+    "image_too_large": "IMAGE_TOO_LARGE",
+    "incomplete_response": "INCOMPLETE_RESPONSE",
+    "invalid_encrypted_content": "CONTINUATION_REJECTED",
+    "llama_cpp_grammar_pattern": "GRAMMAR_UNSUPPORTED",
+    "long_context_tier": "LONG_CONTEXT_TIER",
+    "model_entitlement": "MODEL_ENTITLEMENT",
+    "model_not_found": "MODEL_UNAVAILABLE",
+    "multimodal_tool_content_unsupported": "MULTIMODAL_TOOL_CONTENT_UNSUPPORTED",
+    "oauth_long_context_beta_forbidden": "OAUTH_LONG_CONTEXT_BETA_FORBIDDEN",
+    "overloaded": "PROVIDER_OVERLOADED",
+    "payload_too_large": "PAYLOAD_TOO_LARGE",
+    "provider_policy_blocked": "PROVIDER_POLICY_BLOCKED",
+    "rate_limit": "RATE_LIMITED",
+    "reasoning_mandatory": "REASONING_REQUIRED",
+    "role_alternation": "ROLE_ALTERNATION",
+    "server_error": "PROVIDER_ERROR",
+    "ssl_cert_verification": "TLS_ERROR",
+    "thinking_signature": "THINKING_SIGNATURE_INVALID",
+    "timeout": "TIMEOUT",
+    "unknown": "UNKNOWN",
+    "upstream_blocked": "UPSTREAM_BLOCKED",
+    "upstream_rate_limit": "UPSTREAM_RATE_LIMITED"
+  },
+  "messages": [
+    [
+      "CONTENT_BLOCKED",
+      [
+        "content policy",
+        "safety policy",
+        "safety filter",
+        "flagged for possible cybersecurity risk",
+        "violates our usage policies",
+        "prompt was flagged by our safety",
+        "content_filter",
+        "responsibleaipolicyviolation",
+        "content exists risk"
+      ]
+    ],
+    [
+      "PROVIDER_POLICY_BLOCKED",
+      [
+        "data policy",
+        "privacy policy",
+        "account has been banned",
+        "blocked for a previous policy violation",
+        "no endpoints available matching your guardrail"
+      ]
+    ],
+    [
+      "OAUTH_LONG_CONTEXT_BETA_FORBIDDEN",
+      [
+        "oauth authentication does not support long context",
+        "oauth long context beta"
+      ]
+    ],
+    [
+      "LONG_CONTEXT_TIER",
+      [
+        "extra usage is required for long context"
+      ]
+    ],
+    [
+      "MODEL_ENTITLEMENT",
+      [
+        "not supported when using codex with a chatgpt account",
+        "not entitled to this model",
+        "do not have an active grok subscription"
+      ]
+    ],
+    [
+      "THINKING_SIGNATURE_INVALID",
+      [
+        "invalid signature in thinking",
+        "invalid thinking signature",
+        "invalid signature in thinking block"
+      ]
+    ],
+    [
+      "CONTINUATION_REJECTED",
+      [
+        "invalid_encrypted_content",
+        "conflicting authenticated continuation identities",
+        "could not decrypt the provided encrypted_content"
+      ]
+    ],
+    [
+      "GRAMMAR_UNSUPPORTED",
+      [
+        "error parsing grammar",
+        "json-schema-to-grammar",
+        "regex lookaround is not supported"
+      ]
+    ],
+    [
+      "REASONING_REQUIRED",
+      [
+        "reasoning is mandatory",
+        "reasoning cannot be disabled",
+        "does not support disabling reasoning"
+      ]
+    ],
+    [
+      "ROLE_ALTERNATION",
+      [
+        "roles must alternate",
+        "roles must strictly alternate"
+      ]
+    ],
+    [
+      "MULTIMODAL_TOOL_CONTENT_UNSUPPORTED",
+      [
+        "tool message content must be a string",
+        "tool content must be a string"
+      ]
+    ],
+    [
+      "IMAGE_TOO_LARGE",
+      [
+        "image too large",
+        "image exceeds",
+        "image dimensions exceed",
+        "media exceeds size limit"
+      ]
+    ],
+    [
+      "IMAGE_CORRUPT",
+      [
+        "invalid png image",
+        "invalid jpeg image",
+        "base64 string of provided image cannot be decoded"
+      ]
+    ],
+    [
+      "LOCAL_RESOURCE_EXHAUSTED",
+      [
+        "out of memory",
+        "memory guard",
+        "prefill safety cap",
+        "predicted peak would"
+      ]
+    ],
+    [
+      "REQUEST_REJECTED",
+      [
+        "unsupported parameter",
+        "unknown parameter",
+        "request validation failed"
+      ]
+    ],
+    [
+      "CONTEXT_LIMIT",
+      [
+        "context length exceeded",
+        "maximum context length",
+        "context window exceeded",
+        "prompt is too long",
+        "input is too long"
+      ]
+    ],
+    [
+      "PAYLOAD_TOO_LARGE",
+      [
+        "request entity too large",
+        "payload too large"
+      ]
+    ],
+    [
+      "PROVIDER_OVERLOADED",
+      [
+        "temporarily overloaded",
+        "server overloaded",
+        "server is overloaded",
+        "at capacity",
+        "upstream model provider is temporarily unavailable"
+      ]
+    ],
+    [
+      "RATE_LIMITED",
+      [
+        "rate limit",
+        "too many requests",
+        "throttlingexception"
+      ]
+    ],
+    [
+      "QUOTA_EXHAUSTED",
+      [
+        "insufficient credits",
+        "credit balance",
+        "hard billing limit",
+        "budget limit exceeded",
+        "out of funds"
+      ]
+    ],
+    [
+      "MODEL_UNAVAILABLE",
+      [
+        "model not found",
+        "model does not exist"
+      ]
+    ],
+    [
+      "TLS_ERROR",
+      [
+        "certificate verify failed",
+        "certificate_verify_failed",
+        "certificate verification failed",
+        "unable to get local issuer certificate",
+        "self-signed certificate",
+        "certificate has expired"
+      ]
+    ],
+    [
+      "AUTHENTICATION_FAILED",
+      [
+        "invalid api key",
+        "invalid_api_key",
+        "invalid token",
+        "token expired",
+        "token revoked",
+        "failed to extract accountid from token"
+      ]
+    ],
+    [
+      "TIMEOUT",
+      [
+        "timed out",
+        "deadline exceeded"
+      ]
+    ],
+    [
+      "CONNECTION_ERROR",
+      [
+        "connection refused",
+        "econnrefused",
+        "no route to host",
+        "network is unreachable",
+        "network unreachable",
+        "name or service not known",
+        "temporary failure in name resolution",
+        "nodename nor servname provided",
+        "getaddrinfo failed",
+        "getaddrinfo enotfound",
+        "eai_again",
+        "upstream connect error",
+        "broken pipe",
+        "connection reset by peer",
+        "peer closed connection",
+        "server disconnected",
+        "unexpected eof",
+        "incomplete chunked read"
+      ]
+    ]
+  ],
+  "native": {
+    "api_error": "PROVIDER_ERROR",
+    "authentication_error": "AUTHENTICATION_FAILED",
+    "balance_depleted": "QUOTA_EXHAUSTED",
+    "billing_not_active": "QUOTA_EXHAUSTED",
+    "canceled": "CANCELLED",
+    "cancelled": "CANCELLED",
+    "content_filter": "CONTENT_BLOCKED",
+    "content_policy_violation": "CONTENT_BLOCKED",
+    "context_length_exceeded": "CONTEXT_LIMIT",
+    "credit_balance_exhausted": "QUOTA_EXHAUSTED",
+    "econnrefused": "CONNECTION_ERROR",
+    "econnreset": "CONNECTION_ERROR",
+    "empty_stream": "BROKEN_STREAM",
+    "epipe": "CONNECTION_ERROR",
+    "err_stream_premature_close": "BROKEN_STREAM",
+    "etimedout": "TIMEOUT",
+    "incomplete_stream": "BROKEN_STREAM",
+    "insufficient_credits": "QUOTA_EXHAUSTED",
+    "insufficient_credits_for_paid_model": "QUOTA_EXHAUSTED",
+    "insufficient_quota": "QUOTA_EXHAUSTED",
+    "invalid_api_key": "AUTHENTICATION_FAILED",
+    "invalid_encrypted_content": "CONTINUATION_REJECTED",
+    "invalid_model": "MODEL_UNAVAILABLE",
+    "invalid_request_body": "REQUEST_REJECTED",
+    "malformed_provider_response": "PROTOCOL_ERROR",
+    "max_tokens_exceeded": "CONTEXT_LIMIT",
+    "member_spend_cap_exceeded": "QUOTA_EXHAUSTED",
+    "model_not_available": "MODEL_UNAVAILABLE",
+    "model_not_found": "MODEL_UNAVAILABLE",
+    "model_not_supported_on_free_tier": "QUOTA_EXHAUSTED",
+    "no_usable_credits": "QUOTA_EXHAUSTED",
+    "omlx_prefill_memory_exceeded": "LOCAL_RESOURCE_EXHAUSTED",
+    "organization_spend_limit_exceeded": "QUOTA_EXHAUSTED",
+    "organization_usage_limit_exceeded": "QUOTA_EXHAUSTED",
+    "overloaded_error": "PROVIDER_OVERLOADED",
+    "payment_required": "QUOTA_EXHAUSTED",
+    "permission_denied": "ACCESS_DENIED",
+    "permission_error": "ACCESS_DENIED",
+    "personal-team-blocked:spending-limit": "QUOTA_EXHAUSTED",
+    "prefill_memory_aborted": "LOCAL_RESOURCE_EXHAUSTED",
+    "prefill_memory_exceeded": "LOCAL_RESOURCE_EXHAUSTED",
+    "project_spend_limit_exceeded": "QUOTA_EXHAUSTED",
+    "provider_stream_non_json_data": "PROTOCOL_ERROR",
+    "rate_limit_error": "RATE_LIMITED",
+    "rate_limit_exceeded": "RATE_LIMITED",
+    "request_aborted": "CANCELLED",
+    "request_cancelled": "CANCELLED",
+    "request_too_large": "PAYLOAD_TOO_LARGE",
+    "request_too_large_error": "PAYLOAD_TOO_LARGE",
+    "resource_exhausted": "RATE_LIMITED",
+    "safety_rejection": "CONTENT_BLOCKED",
+    "server_error": "PROVIDER_ERROR",
+    "server_is_overloaded": "PROVIDER_OVERLOADED",
+    "server_overload": "PROVIDER_OVERLOADED",
+    "stream_interrupted": "BROKEN_STREAM",
+    "terminal_quota_exhausted": "QUOTA_EXHAUSTED",
+    "thinking_signature_invalid": "CONTINUATION_REJECTED",
+    "throttled": "RATE_LIMITED",
+    "unknown_parameter": "REQUEST_REJECTED",
+    "unsupported_parameter": "REQUEST_REJECTED",
+    "upstream_unavailable": "PROVIDER_OVERLOADED"
+  },
+  "providers": {
+    "gemini": {
+      "deadline_exceeded": "TIMEOUT",
+      "internal": "PROVIDER_ERROR",
+      "unavailable": "PROVIDER_OVERLOADED"
+    }
+  }
+}
