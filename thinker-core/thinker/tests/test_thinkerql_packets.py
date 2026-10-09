@@ -110,6 +110,8 @@ def test_terminal_outcomes_do_not_require_fabricated_usage(status):
         {"timeout_ms": 0},
         {"routing": {"route_id": "a", "model": "b"}},
         {"routing": {"call_id": "ambiguous-old-name"}},
+        {"instructions": {"json_schema_strict": True}},
+        {"instructions": {"json_schema": {}, "json_schema_strict": "true"}},
         {"messages": [{"role": "user", "tool_calls": [{"name": "read_file"}]}]},
         {"provider_options": {"temperature": float("nan")}},
         {"provider_options": {"non_json_tuple": (1, 2)}},

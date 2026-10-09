@@ -2,6 +2,11 @@
 
 Core library for Thinker - registry-driven LLM access with ThinkerQL specification.
 
+For the new stateless `model_call` API, read the
+[Python library user manual](../docs/USER_MANUAL.md). It covers ThinkerQL 0.4,
+optional provider constraints, caller-owned recovery, concurrency, and opt-in
+debug traces. The `Thinker` examples below describe the legacy API.
+
 ## Installation
 
 ```bash

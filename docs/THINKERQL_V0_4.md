@@ -1,5 +1,8 @@
 # ThinkerQL 0.4 packet contract
 
+For setup, examples, recovery, and migration, see the
+[Python library user manual](USER_MANUAL.md).
+
 This interface provides packets, provider-error classification, and an asynchronous
 `thinker.model_call` function. It makes one native HTTP request using a host-selected
 registry route, then returns a packet. It does not run tools, repair output, retry,
@@ -74,6 +77,15 @@ Current limits and behavior:
 - Requested JSON output is forwarded to the provider without schema downgrade or
   local output validation. Unsupported constraints produce the provider's error.
   Tool arguments and model text remain unchanged, even when invalid JSON.
+  `instructions.json_schema` is optional and caller-owned, including any `enum`
+  vocabulary; the caller selects a compatible model. No output constraint is
+  added when it is omitted. Chat Completions and Responses accept the optional
+  boolean `instructions.json_schema_strict`, which requires `json_schema` and
+  passes the native `strict` flag unchanged. When omitted, Thinker leaves that
+  flag absent and provider defaults apply. This replaces the earlier automatic
+  `strict=True`; callers wanting that behavior must now request it explicitly.
+  Anthropic/Gemini still map `json_schema`, but explicitly reject the separate
+  strict flag rather than silently ignoring it.
 - Text and OpenAI image URL parts are mapped directly. Other media can be carried
   as native `provider` parts; unsupported common representations return an error.
   Responses reasoning items are replayed as native input items. Anthropic thinking
@@ -238,7 +250,8 @@ returns a fresh standalone JSON Schema.
   Top-level `tool_results` means new results appended after `messages`, in array
   order. A caller should use that field or tool messages for a result, not both.
 - `tools` declares names and input schemas. Thinker does not execute them.
-  `strict` and `instructions.json_schema` request provider constraints; they
+  Tool `strict`, `instructions.json_schema`, and `instructions.json_schema_strict`
+  request provider constraints; they
   never authorize discarding generated content that fails those constraints.
 - `continuation` and `provider_data` preserve opaque provider state, including
   signatures and encrypted reasoning, without interpreting it.

@@ -107,10 +107,18 @@
           }
         },
         "json_schema": {
-          "type": "object"
+          "type": "object",
+          "description": "Optional caller-owned output schema, including enum vocabularies. Forwarded to the provider; never used to accept, reject, or repair generated content. The caller selects a compatible model."
+        },
+        "json_schema_strict": {
+          "type": "boolean",
+          "description": "Optional native strict flag for Chat Completions and Responses. Requires json_schema. Omission leaves provider defaults in effect; other protocols reject this flag explicitly."
         }
       },
       "required": [],
+      "dependentRequired": {
+        "json_schema_strict": ["json_schema"]
+      },
       "additionalProperties": false
     },
     "routing": {

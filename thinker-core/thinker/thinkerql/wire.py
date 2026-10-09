@@ -239,6 +239,10 @@ def prepare(packet, route):
 
     settings = packet.get("instructions", {})
     schema = settings.get("json_schema")
+    if "json_schema_strict" in settings and protocol not in {"chat", "responses"}:
+        raise UnsupportedRequest(
+            "json_schema_strict is only mapped for Chat Completions and Responses"
+        )
     limit = settings.get("max_output_tokens", 256)
     tools = packet.get("tools", [])
     if protocol in {"chat", "responses"}:
@@ -272,8 +276,11 @@ def prepare(packet, route):
                 "type": "json_schema",
                 "name": "thinker_response",
                 "schema": schema,
-                "strict": True,
             }
+            # Constraint policy belongs to the caller. Do not silently strengthen
+            # a schema request or apply its constraints to returned model content.
+            if "json_schema_strict" in settings:
+                fmt["strict"] = settings["json_schema_strict"]
             body.update(
                 {
                     "response_format": {

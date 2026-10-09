@@ -34,6 +34,9 @@ async def model_call(
     validation, retry, schema downgrade, tool execution, or provider fallback is
     performed. Existing qualified APIs are separate and unchanged.
 
+    Optional instructions.json_schema and json_schema_strict are provider request
+    settings owned by the caller, never local output acceptance conditions.
+
     Cancel this coroutine's task to abort the transport and receive a CANCELLED
     packet. A caller-owned client remains open. The default client has no retries
     or redirects. This function buffers one non-SSE response; received bytes

@@ -187,6 +187,96 @@ def test_native_protocol_preserves_imperfect_content_tools_and_opaque_fields(pro
 
 
 @pytest.mark.parametrize("protocol", ["chat", "responses", "anthropic", "gemini"])
+def test_no_constraint_is_added_to_an_ordinary_model_call(protocol):
+    result, calls = invoke(packet(), selected=route(protocol), data=response(protocol))
+    assert result["status"] == "completed"
+    body = json.loads(calls[0].content)
+    assert "response_format" not in body
+    assert "text" not in body
+    assert "output_config" not in body
+    assert "responseJsonSchema" not in body.get("generationConfig", {})
+    assert "responseMimeType" not in body.get("generationConfig", {})
+
+
+@pytest.mark.parametrize("protocol", ["chat", "responses", "anthropic", "gemini"])
+def test_caller_vocabulary_is_forwarded_unchanged_without_enforcing_returned_content(protocol):
+    schema = {
+        "type": "object",
+        "properties": {"decision": {"type": "string", "enum": ["accept", "revise", "ask"]}},
+        "required": ["decision"],
+        "additionalProperties": False,
+    }
+    request = packet(instructions={"json_schema": schema})
+    before = deepcopy(request)
+    result, calls = invoke(
+        request,
+        selected=route(protocol),
+        data=response(protocol, '{"decision":"outside-vocabulary"}'),
+    )
+    body = json.loads(calls[0].content)
+    if protocol == "chat":
+        config = body["response_format"]["json_schema"]
+    elif protocol == "responses":
+        config = body["text"]["format"]
+    elif protocol == "anthropic":
+        config = body["output_config"]["format"]
+    else:
+        config = {"schema": body["generationConfig"]["responseJsonSchema"]}
+    assert config["schema"] == schema
+    assert "strict" not in config
+    assert request == before
+    assert result["content"] == '{"decision":"outside-vocabulary"}'
+    assert result["status"] == "completed"
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("protocol", ["chat", "responses"])
+@pytest.mark.parametrize("strict", [True, False])
+def test_native_strict_flag_is_explicit_and_does_not_enable_local_output_validation(
+    protocol, strict
+):
+    result, calls = invoke(
+        packet(instructions={"json_schema": {"type": "object"}, "json_schema_strict": strict}),
+        selected=route(protocol),
+        data=response(protocol, "not JSON"),
+    )
+    body = json.loads(calls[0].content)
+    config = (
+        body["response_format"]["json_schema"] if protocol == "chat" else body["text"]["format"]
+    )
+    assert config["strict"] is strict
+    assert result["content"] == "not JSON"
+    assert result["status"] == "completed"
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("protocol", ["anthropic", "gemini"])
+@pytest.mark.parametrize("strict", [True, False])
+def test_unmapped_strict_flag_is_not_silently_dropped(protocol, strict):
+    result, calls = invoke(
+        packet(instructions={"json_schema": {"type": "object"}, "json_schema_strict": strict}),
+        selected=route(protocol),
+    )
+    assert result["error"]["code"] == "UNSUPPORTED_REQUEST"
+    assert result["invocations"] == []
+    assert calls == []
+
+
+@pytest.mark.parametrize("protocol", ["chat", "responses", "anthropic", "gemini"])
+def test_provider_schema_rejection_is_returned_without_downgrade_or_retry(protocol):
+    result, calls = invoke(
+        packet(instructions={"json_schema": {"type": "object", "customKeyword": "caller-value"}}),
+        selected=route(protocol),
+        data={"error": {"message": "Unsupported schema keyword", "code": "invalid_request_error"}},
+        status=400,
+    )
+    assert result["error"]["code"] == "REQUEST_REJECTED"
+    assert result["status"] == "failed"
+    assert b'"customKeyword":"caller-value"' in calls[0].content
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("protocol", ["chat", "responses", "anthropic", "gemini"])
 def test_host_correction_replays_original_arguments_and_error_result(protocol):
     first, _ = invoke(packet(), selected=route(protocol), data=response(protocol))
     followup = packet()
