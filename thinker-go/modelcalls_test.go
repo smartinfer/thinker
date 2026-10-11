@@ -751,6 +751,12 @@ func TestPythonParity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if f["kind"] == "wire_reject" {
+				if _, _, _, err := prepare(request, route); err == nil {
+					t.Fatal("Python rejected this request; Go accepted it")
+				}
+				return
+			}
 			p, url, body, err := prepare(request, route)
 			if err != nil {
 				t.Fatal(err)

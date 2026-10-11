@@ -20,6 +20,11 @@ type Route struct {
 	PayloadStyle string   `json:"payload_style"`
 	Endpoint     string   `json:"endpoint,omitempty"`
 	Aliases      []string `json:"aliases,omitempty"`
+	// TokenLimitField is an explicit per-route capability for the completion
+	// token-limit parameter name. Empty keeps each protocol's existing field.
+	// "max_completion_tokens" is verified for OpenAI Chat Completions models
+	// (e.g. gpt-5.1) that reject the legacy "max_tokens". Never both.
+	TokenLimitField string `json:"token_limit_field,omitempty"`
 }
 
 func protocolFor(r Route) (string, error) {
@@ -77,6 +82,23 @@ func partsFor(m Packet, p, provider string) ([]any, error) {
 		}
 	}
 	return out, nil
+}
+
+// portableEfforts are the values of a portable routing.reasoning object
+// {"effort": <value>}, mapped to each protocol's native field. Any other object
+// is native and passes through unchanged.
+var portableEfforts = map[string]bool{"none": true, "minimal": true, "low": true, "medium": true, "high": true, "xhigh": true, "max": true}
+
+func portableEffort(reasoning any) (string, bool) {
+	m, ok := reasoning.(Packet)
+	if !ok || len(m) != 1 {
+		return "", false
+	}
+	effort, isString := m["effort"].(string)
+	if !isString || !portableEfforts[effort] {
+		return "", false
+	}
+	return effort, true
 }
 
 func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, err error) {
@@ -275,6 +297,8 @@ func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, er
 	if has(settings, "json_schema_strict") && p != "chat" && p != "responses" {
 		return fail("json_schema_strict is only mapped for Chat Completions and Responses")
 	}
+	reasoning := routing["reasoning"]
+	effort, portable := portableEffort(reasoning)
 	body = Packet{}
 	base := strings.TrimRight(r.Endpoint, "/")
 	suffix := ""
@@ -286,6 +310,21 @@ func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, er
 		if p == "responses" {
 			input, output = "input", "max_output_tokens"
 			suffix = "/responses"
+		}
+		switch r.TokenLimitField {
+		case "":
+		case "max_completion_tokens":
+			if p != "chat" {
+				return fail("token_limit_field max_completion_tokens is only verified for Chat Completions routes")
+			}
+			output = "max_completion_tokens"
+		default:
+			return fail("unsupported route token_limit_field")
+		}
+		for _, k := range []string{"max_tokens", "max_completion_tokens", "max_output_tokens"} {
+			if has(options, k) {
+				return fail("provider_options cannot override the token limit; set instructions max_output_tokens and, if the model requires it, the route token_limit_field")
+			}
 		}
 		body = Packet{"model": r.ModelID, input: native, output: limit, "stream": false}
 		if len(tools) > 0 {
@@ -322,13 +361,22 @@ func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, er
 				body[k] = settings[k]
 			}
 		}
-		if truthy(routing["reasoning"]) {
-			body["reasoning"] = routing["reasoning"]
+		if portable && p == "chat" {
+			// Chat Completions takes a top-level string, not a reasoning object.
+			body["reasoning_effort"] = effort
+		} else if truthy(reasoning) {
+			body["reasoning"] = reasoning
 		}
 		if base == "" && r.Provider == "openai" {
 			base = "https://api.openai.com"
 		}
 	case "anthropic":
+		if r.TokenLimitField != "" {
+			return fail("token_limit_field is not verified for this protocol")
+		}
+		if portable && effort != "none" {
+			return fail("Anthropic thinking needs a native thinking object; only effort none is portable")
+		}
 		if has(settings, "seed") {
 			return fail("Anthropic seed is unsupported")
 		}
@@ -355,14 +403,23 @@ func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, er
 		if has(settings, "stop") {
 			body["stop_sequences"] = settings["stop"]
 		}
-		if truthy(routing["reasoning"]) {
-			body["thinking"] = routing["reasoning"]
+		// Omitting thinking is model-dependent, so effort none disables it explicitly.
+		if portable {
+			body["thinking"] = Packet{"type": "disabled"}
+		} else if truthy(reasoning) {
+			body["thinking"] = reasoning
 		}
 		if base == "" {
 			base = "https://api.anthropic.com"
 		}
 		suffix = "/messages"
 	case "gemini":
+		if r.TokenLimitField != "" {
+			return fail("token_limit_field is not verified for this protocol")
+		}
+		if portable && effort != "none" {
+			return fail("Gemini thinking needs a native thinkingConfig; only effort none is portable")
+		}
 		generation := Packet{"maxOutputTokens": limit}
 		for k, native := range map[string]string{"temperature": "temperature", "top_p": "topP", "seed": "seed", "stop": "stopSequences"} {
 			if has(settings, k) {
@@ -373,8 +430,10 @@ func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, er
 			generation["responseMimeType"] = "application/json"
 			generation["responseJsonSchema"] = schema
 		}
-		if truthy(routing["reasoning"]) {
-			generation["thinkingConfig"] = routing["reasoning"]
+		if portable {
+			generation["thinkingConfig"] = Packet{"thinkingBudget": 0}
+		} else if truthy(reasoning) {
+			generation["thinkingConfig"] = reasoning
 		}
 		body = Packet{"contents": native, "generationConfig": generation}
 		if len(systems) > 0 {

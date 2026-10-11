@@ -37,6 +37,10 @@ class RegistryCall(BaseModel):
     payload_style: str                             # "chat_completions_v1" | ...
     endpoint: Optional[str] = None
     aliases: List[str] = []                        # ["openai:multimodal-cheap"]
+    # Explicit completion-limit parameter name. None keeps each protocol's
+    # field; "max_completion_tokens" is verified for OpenAI Chat Completions
+    # models (e.g. gpt-5.x) that reject the legacy "max_tokens". Never both.
+    token_limit_field: Optional[str] = None
 
     @field_validator("call_id")
     @classmethod

@@ -13,7 +13,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from thinker.thinkerql import classify_error, parse_request
-from thinker.thinkerql.wire import lift, prepare
+from thinker.thinkerql.wire import UnsupportedRequest, lift, prepare
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,6 +35,10 @@ def cases():
             "opaque",
             "empty_reasoning",
             "escaped_model",
+            "portable_reasoning",
+            "portable_high",
+            "token_limit",
+            "options_token_limit",
         ):
             selected = route(protocol)
             request = packet()
@@ -42,6 +46,14 @@ def cases():
             native["exact_large_id"] = 90071992547409931234567
             if variant == "empty_reasoning":
                 request["routing"] = {"reasoning": {}}
+            if variant == "portable_reasoning":
+                request["routing"] = {"reasoning": {"effort": "none"}}
+            if variant == "portable_high":
+                request["routing"] = {"reasoning": {"effort": "high"}}
+            if variant == "token_limit":
+                selected = route(protocol, token_limit_field="max_completion_tokens")
+            if variant == "options_token_limit":
+                request["provider_options"] = {"max_tokens": 9}
             if variant == "escaped_model":
                 selected = route(protocol, model_id="test/model:with space+")
             if variant == "schema":
@@ -122,7 +134,19 @@ def cases():
                     for field in ("input_tokens", "prompt_tokens"):
                         native["usage"][field] = 11.0
                     native["usageMetadata"]["thoughtsTokenCount"] = "unknown"
-            p, url, body = prepare(parse_request(request), selected)
+            try:
+                p, url, body = prepare(parse_request(request), selected)
+            except UnsupportedRequest:
+                # Go must refuse exactly the requests Python refuses.
+                fixtures.append(
+                    {
+                        "name": f"{protocol}/{variant}",
+                        "kind": "wire_reject",
+                        "request": request,
+                        "route": selected.model_dump(),
+                    }
+                )
+                continue
             fixtures.append(
                 {
                     "name": f"{protocol}/{variant}",

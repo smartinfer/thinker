@@ -29,6 +29,23 @@ def protocol_for(route):
     raise UnsupportedRequest(f"Unsupported payload_style: {route.payload_style}")
 
 
+# Portable reasoning: routing.reasoning == {"effort": <one of these>} is mapped to
+# each protocol's native field. Any other object is native and passes through.
+PORTABLE_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+TOKEN_LIMIT_KEYS = ("max_tokens", "max_completion_tokens", "max_output_tokens")
+
+
+def portable_effort(reasoning):
+    """Return the effort of a portable reasoning object, else None (native)."""
+    if (
+        isinstance(reasoning, dict)
+        and set(reasoning) == {"effort"}
+        and reasoning["effort"] in PORTABLE_EFFORTS
+    ):
+        return reasoning["effort"]
+    return None
+
+
 def _string(value):
     return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
 
@@ -245,11 +262,28 @@ def prepare(packet, route):
         )
     limit = settings.get("max_output_tokens", 256)
     tools = packet.get("tools", [])
+    token_limit_field = getattr(route, "token_limit_field", None)
+    reasoning = routing.get("reasoning")
+    effort = portable_effort(reasoning)
     if protocol in {"chat", "responses"}:
+        output = "max_tokens" if protocol == "chat" else "max_output_tokens"
+        if token_limit_field == "max_completion_tokens":
+            if protocol != "chat":
+                raise UnsupportedRequest(
+                    "token_limit_field max_completion_tokens is only verified for Chat Completions routes"
+                )
+            output = "max_completion_tokens"
+        elif token_limit_field:
+            raise UnsupportedRequest("unsupported route token_limit_field")
+        if any(k in options for k in TOKEN_LIMIT_KEYS):
+            raise UnsupportedRequest(
+                "provider_options cannot override the token limit; set instructions "
+                "max_output_tokens and, if the model requires it, the route token_limit_field"
+            )
         body = {
             "model": route.model_id,
             "messages" if protocol == "chat" else "input": native,
-            "max_tokens" if protocol == "chat" else "max_output_tokens": limit,
+            output: limit,
             "stream": False,
         }
         if tools:
@@ -294,12 +328,20 @@ def prepare(packet, route):
         body.update(
             {k: v for k, v in settings.items() if k in {"temperature", "top_p", "seed", "stop"}}
         )
-        reasoning = routing.get("reasoning")
-        if reasoning:
+        if effort is not None and protocol == "chat":
+            # Chat Completions takes a top-level string, not a reasoning object.
+            body["reasoning_effort"] = effort
+        elif reasoning:
             body["reasoning"] = reasoning
         base = route.endpoint or ("https://api.openai.com" if route.provider == "openai" else None)
         suffix = "/chat/completions" if protocol == "chat" else "/responses"
     elif protocol == "anthropic":
+        if token_limit_field:
+            raise UnsupportedRequest("token_limit_field is not verified for this protocol")
+        if effort not in (None, "none"):
+            raise UnsupportedRequest(
+                "Anthropic thinking needs a native thinking object; only effort none is portable"
+            )
         if "seed" in settings:
             raise UnsupportedRequest("Anthropic seed is unsupported")
         if any("strict" in t for t in tools):
@@ -314,10 +356,19 @@ def prepare(packet, route):
         body.update({k: v for k, v in settings.items() if k in {"temperature", "top_p"}})
         if "stop" in settings:
             body["stop_sequences"] = settings["stop"]
-        if routing.get("reasoning"):
-            body["thinking"] = routing["reasoning"]
+        # Omitting thinking is model-dependent, so effort none disables it explicitly.
+        if effort == "none":
+            body["thinking"] = {"type": "disabled"}
+        elif reasoning:
+            body["thinking"] = reasoning
         base, suffix = route.endpoint or "https://api.anthropic.com", "/messages"
     else:
+        if token_limit_field:
+            raise UnsupportedRequest("token_limit_field is not verified for this protocol")
+        if effort not in (None, "none"):
+            raise UnsupportedRequest(
+                "Gemini thinking needs a native thinkingConfig; only effort none is portable"
+            )
         if any("strict" in t for t in tools):
             raise UnsupportedRequest("Gemini tool strict flag is unsupported")
         generation = {"maxOutputTokens": limit}
@@ -331,8 +382,10 @@ def prepare(packet, route):
                 generation[native_field] = settings[field]
         if schema is not None:
             generation.update(responseMimeType="application/json", responseJsonSchema=schema)
-        if routing.get("reasoning"):
-            generation["thinkingConfig"] = routing["reasoning"]
+        if effort == "none":
+            generation["thinkingConfig"] = {"thinkingBudget": 0}
+        elif reasoning:
+            generation["thinkingConfig"] = reasoning
         body = {"contents": native, "generationConfig": generation}
         if systems:
             body["systemInstruction"] = {"parts": systems}

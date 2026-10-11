@@ -164,6 +164,32 @@ repair, or retries. The caller decides how to use or correct the result.
 | `generateContent_v1beta` | Gemini GenerateContent |
 | `model_turn_v1` | Corresponding Responses, Anthropic, or Gemini protocol selected by adapter identity |
 
+### Token limit and reasoning
+
+`instructions.max_output_tokens` becomes `max_tokens` (Chat Completions and
+Anthropic), `max_output_tokens` (Responses), or `maxOutputTokens` (Gemini). Models
+that reject `max_tokens` on Chat Completions (OpenAI gpt-5.x) need the route field
+`TokenLimitField: "max_completion_tokens"` (JSON `token_limit_field`); it is refused
+on other protocols. Exactly one limit field is sent, and `provider_options` cannot
+set a token limit.
+
+`routing.reasoning` is either native or portable. A portable object has exactly one
+key, `{"effort": E}` with E in `none`, `minimal`, `low`, `medium`, `high`, `xhigh`,
+`max`, and is mapped per protocol:
+
+| Protocol | Portable `{"effort": E}` becomes |
+| --- | --- |
+| Chat Completions | top-level `reasoning_effort: E` |
+| Responses | `reasoning: {"effort": E}` |
+| Anthropic | E = `none`: `thinking: {"type": "disabled"}`; other values are refused |
+| Gemini | E = `none`: `thinkingConfig: {"thinkingBudget": 0}`; other values are refused |
+
+Anthropic and Gemini budgets and levels are model-specific, so they are not guessed:
+pass the provider's own object (for example `{"type": "enabled", "budget_tokens":
+2048}` or `{"thinkingLevel": "low"}`), which is sent unchanged. Gemini 2.5 Pro and
+3.x cannot disable thinking; the provider rejects `none` there. Sources and the dates
+they were checked are in `spec/thinkerql-provider-apis.yaml`.
+
 Multiple tools, raw tool arguments, tool results, native provider parts, Responses
 continuation, and optional provider settings follow the
 [packet reference](THINKERQL_V0_4.md). Multiple returned candidates remain in
@@ -345,6 +371,10 @@ From the repository root, using the Python development environment:
 python tools/sync_go_contract.py --check
 python tools/check_go_parity.py
 ```
+
+The provider API manifest test (`thinker/tests/test_provider_api_manifest.py`)
+warns when `spec/thinkerql-provider-apis.yaml` has documentation or live evidence
+older than 30 days.
 
 The first command checks the embedded copies against the Python packet schemas
 and error vocabulary. To refresh them after an intentional contract change, run
