@@ -39,6 +39,7 @@ def cases():
             "portable_high",
             "token_limit",
             "options_token_limit",
+            "usage_no_thoughts",
         ):
             selected = route(protocol)
             request = packet()
@@ -109,6 +110,14 @@ def cases():
                         ],
                     }
                 )
+            if variant == "usage_no_thoughts":
+                # Live gemini-2.5-flash shape with thinking off (2026-10-11):
+                # zero-valued counts are omitted.
+                native["usageMetadata"] = {
+                    "promptTokenCount": 8478,
+                    "candidatesTokenCount": 136,
+                    "totalTokenCount": 8614,
+                }
             if variant in {"usage", "odd_usage"}:
                 native["usage"] = {
                     "input_tokens": 11,

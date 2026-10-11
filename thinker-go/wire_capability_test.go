@@ -223,3 +223,21 @@ func TestGeminiToolsSendFullJSONSchemaUnchanged(t *testing.T) {
 		t.Fatalf("Gemini tools must carry the caller schema as parametersJsonSchema: %v", declaration)
 	}
 }
+
+func TestGeminiUsageAbsentCountsMeanZero(t *testing.T) {
+	data := Packet{"candidates": []any{Packet{"content": Packet{"parts": []any{Packet{"text": "ok"}}}, "finishReason": "STOP"}},
+		"usageMetadata": Packet{"promptTokenCount": json.Number("8478"), "candidatesTokenCount": json.Number("136"), "totalTokenCount": json.Number("8614")}}
+	r, err := lift(data, "gemini")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := object(r["usage"])
+	if !jsonEqual(t, u["output_tokens"], 136) || !jsonEqual(t, u["reasoning_tokens"], 0) || !jsonEqual(t, u["cached_input_tokens"], 0) {
+		t.Fatalf("absent Gemini counts must be zero: %v", u)
+	}
+	object(data["usageMetadata"])["thoughtsTokenCount"] = "unknown"
+	r, _ = lift(data, "gemini")
+	if object(r["usage"])["output_tokens"] != nil {
+		t.Fatalf("an invalid count must stay unknown: %v", r["usage"])
+	}
+}

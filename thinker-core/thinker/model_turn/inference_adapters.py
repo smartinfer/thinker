@@ -36,8 +36,13 @@ def usage_report(provider, data):
         return v if type(v) is int and v >= 0 else None
 
     if provider == "gemini":
+        # Gemini's proto3 JSON omits zero-valued counts: an absent field means 0,
+        # a present but invalid value stays unknown.
+        def n0(key):
+            return 0 if key not in raw else n(key)
+
         visible = n("candidatesTokenCount")
-        reasoning = n("thoughtsTokenCount")
+        reasoning = n0("thoughtsTokenCount")
         output = visible + reasoning if visible is not None and reasoning is not None else None
         return UsageReport(
             input_tokens=n("promptTokenCount"),
@@ -45,7 +50,7 @@ def usage_report(provider, data):
             visible_output_tokens=visible,
             total_tokens=n("totalTokenCount"),
             reasoning_tokens=reasoning,
-            cached_input_tokens=n("cachedContentTokenCount"),
+            cached_input_tokens=n0("cachedContentTokenCount"),
             raw=raw,
         )
     return UsageReport(

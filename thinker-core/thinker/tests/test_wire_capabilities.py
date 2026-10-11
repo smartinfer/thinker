@@ -3,7 +3,7 @@ wire_capability_test.go; Python/Go agreement is checked by tools/check_go_parity
 
 import pytest
 
-from thinker.tests.test_modelcalls import packet, route
+from thinker.tests.test_modelcalls import packet, response, route
 from thinker.thinkerql import parse_request
 from thinker.thinkerql.wire import UnsupportedRequest, prepare
 
@@ -101,3 +101,15 @@ def test_gemini_tools_send_full_json_schema_unchanged():
     declaration = body["tools"][0]["functionDeclarations"][0]
     assert "parameters" not in declaration
     assert declaration["parametersJsonSchema"] == schema
+
+
+def test_gemini_usage_absent_counts_mean_zero():
+    from thinker.thinkerql.wire import lift
+
+    native = response("gemini")
+    native["usageMetadata"] = {"promptTokenCount": 8478, "candidatesTokenCount": 136, "totalTokenCount": 8614}
+    usage = lift(native, "gemini")["usage"]
+    assert usage["output_tokens"] == 136
+    assert usage["reasoning_tokens"] == 0 and usage["cached_input_tokens"] == 0
+    native["usageMetadata"]["thoughtsTokenCount"] = "unknown"
+    assert lift(native, "gemini")["usage"]["output_tokens"] is None

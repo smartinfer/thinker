@@ -507,6 +507,7 @@ func reportedUsage(data Packet, p string) Packet {
 	if p == "gemini" {
 		raw = object(data["usageMetadata"])
 	}
+	reported := raw != nil
 	if raw == nil {
 		raw = Packet{}
 	}
@@ -526,18 +527,29 @@ func reportedUsage(data Packet, p string) Packet {
 	case "gemini":
 		input, total = "promptTokenCount", "totalTokenCount"
 		output = ""
-		u["cached_input_tokens"] = tokenCount(raw["cachedContentTokenCount"])
-		u["reasoning_tokens"] = tokenCount(raw["thoughtsTokenCount"])
+		// Gemini's proto3 JSON omits zero-valued counts: an absent field means 0,
+		// a present but invalid value stays unknown.
+		u["cached_input_tokens"] = geminiCount(raw, "cachedContentTokenCount", reported)
+		u["reasoning_tokens"] = geminiCount(raw, "thoughtsTokenCount", reported)
 	}
 	u["input_tokens"], u["output_tokens"], u["total_tokens"] = tokenCount(raw[input]), tokenCount(raw[output]), tokenCount(raw[total])
 	if p == "gemini" {
 		visible, ok := number(tokenCount(raw["candidatesTokenCount"]))
-		thinking, ok2 := number(tokenCount(raw["thoughtsTokenCount"]))
+		thinking, ok2 := number(geminiCount(raw, "thoughtsTokenCount", reported))
 		if ok && ok2 {
 			u["output_tokens"] = json.Number(new(big.Rat).Add(visible, thinking).Num().String())
 		}
 	}
 	return u
+}
+
+// geminiCount reads one usageMetadata count; within a reported block an absent
+// field is 0 (proto3 omits zeros), and without a block every count is unknown.
+func geminiCount(raw Packet, key string, reported bool) any {
+	if _, present := raw[key]; reported && !present {
+		return json.Number("0")
+	}
+	return tokenCount(raw[key])
 }
 
 func lift(data Packet, p string) (Packet, error) {
