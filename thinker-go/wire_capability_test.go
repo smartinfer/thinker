@@ -4,6 +4,7 @@ package thinker
 // (token_limit_field), upstreamed from Dolphin's vendored 0.4+tlf1 patch.
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -179,7 +180,7 @@ func TestNativeReasoningPassesThroughUnchanged(t *testing.T) {
 			"messages_v1":            body["thinking"],
 			"generateContent_v1beta": object(body["generationConfig"])["thinkingConfig"],
 		}[style]
-		if !sameJSON(got, any(native)) {
+		if !jsonEqual(t, got, native) {
 			t.Fatalf("%s native reasoning changed: %v", style, got)
 		}
 		if has(body, "reasoning_effort") {
@@ -195,4 +196,16 @@ func TestPortableEffortConflictsWithNativeOption(t *testing.T) {
 		!strings.Contains(err.Error(), "duplicate common and native provider settings") {
 		t.Fatalf("a setting given both ways must be rejected, got %v", err)
 	}
+}
+
+// jsonEqual keeps this file self-contained for hosts that vendor only it
+// (Dolphin); json.Marshal orders map keys deterministically.
+func jsonEqual(t *testing.T, got, want any) bool {
+	t.Helper()
+	a, errA := json.Marshal(got)
+	b, errB := json.Marshal(want)
+	if errA != nil || errB != nil {
+		t.Fatal(errA, errB)
+	}
+	return string(a) == string(b)
 }
