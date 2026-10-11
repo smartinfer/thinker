@@ -396,7 +396,9 @@ def prepare(packet, route):
                         {
                             "name": t["name"],
                             "description": t.get("description", ""),
-                            "parameters": t["input_schema"],
+                            # Full JSON Schema, unchanged; "parameters" accepts only an
+                            # OpenAPI subset and rejects e.g. additionalProperties.
+                            "parametersJsonSchema": t["input_schema"],
                         }
                         for t in tools
                     ]

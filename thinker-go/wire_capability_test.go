@@ -209,3 +209,17 @@ func jsonEqual(t *testing.T, got, want any) bool {
 	}
 	return string(a) == string(b)
 }
+
+func TestGeminiToolsSendFullJSONSchemaUnchanged(t *testing.T) {
+	schema := Packet{"type": "object", "additionalProperties": false,
+		"properties": Packet{"path": Packet{"type": []any{"string", "null"}}}, "required": []any{"path"}}
+	packet := capabilityPacket(Packet{"tools": []any{Packet{"name": "read_file", "description": "d", "input_schema": schema}}})
+	_, _, body, err := prepare(packet, protocolRoute("generateContent_v1beta"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := object(array(object(array(body["tools"])[0])["functionDeclarations"])[0])
+	if has(declaration, "parameters") || !jsonEqual(t, declaration["parametersJsonSchema"], schema) {
+		t.Fatalf("Gemini tools must carry the caller schema as parametersJsonSchema: %v", declaration)
+	}
+}

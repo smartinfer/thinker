@@ -66,6 +66,8 @@ protocols:
       - "Part.thoughtSignature must be resent unchanged in stateless replay; FinishReason MISSING_THOUGHT_SIGNATURE when absent."
       - "Gemini 3.x use thinking_level (per-model levels); thinking cannot be disabled on 2.5 Pro or 3.x."
       - "Portable effort none renders thinkingConfig.thinkingBudget 0 (documented historically for 2.5 Flash; not found on the 2026-10-11 pages)."
+      - "Tools are sent as FunctionDeclaration.parametersJsonSchema (full JSON Schema, caller's schema unchanged). The `parameters` field accepts only an OpenAPI subset and rejects additionalProperties (HTTP 400). Both behaviours observed 2026-10-11: a fake-key request is schema-validated before the key, so parametersJsonSchema passed and failed only on API_KEY_INVALID."
+      - "thinkingConfig.thinkingBudget 0 passes request validation for gemini-2.5-flash (same fake-key check); whether it disables thinking is not yet verified live."
     live_verified:
       date: null
       evidence: "No live native generateContent call recorded; thinkingBudget 0 unverified."

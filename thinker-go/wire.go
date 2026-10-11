@@ -446,7 +446,9 @@ func prepare(packet Packet, r Route) (protocol, endpoint string, body Packet, er
 				if has(t, "strict") {
 					return fail("Gemini tool strict flag is unsupported")
 				}
-				definitions = append(definitions, Packet{"name": t["name"], "description": fallback(t["description"], ""), "parameters": t["input_schema"]})
+				// Full JSON Schema, unchanged; "parameters" accepts only an OpenAPI
+				// subset and rejects e.g. additionalProperties.
+				definitions = append(definitions, Packet{"name": t["name"], "description": fallback(t["description"], ""), "parametersJsonSchema": t["input_schema"]})
 			}
 			body["tools"] = []any{Packet{"functionDeclarations": definitions}}
 		}

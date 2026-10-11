@@ -87,3 +87,17 @@ def test_portable_effort_conflicts_with_native_option():
     request = packet(routing={"reasoning": {"effort": "none"}}, provider_options={"reasoning_effort": "low"})
     with pytest.raises(UnsupportedRequest, match="Duplicate common and native provider settings"):
         prepare(parse_request(request), route("chat"))
+
+
+def test_gemini_tools_send_full_json_schema_unchanged():
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"path": {"type": ["string", "null"]}},
+        "required": ["path"],
+    }
+    request = packet(tools=[{"name": "read_file", "description": "d", "input_schema": schema}])
+    body = prepare(parse_request(request), route("gemini"))[2]
+    declaration = body["tools"][0]["functionDeclarations"][0]
+    assert "parameters" not in declaration
+    assert declaration["parametersJsonSchema"] == schema
