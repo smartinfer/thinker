@@ -13,9 +13,9 @@ import httpx
 
 from thinker.registry.schema import RegistryCall
 
+from . import schema_compat
 from .errors import ModelTurnErrorCode, ModelTurnProviderException
 from .http_common import CredentialResolver, http_error, provider_error, resolve_credential
-from . import schema_compat
 from .models import Continuation, MessageRole, ModelTurnRequest, ToolCall, Usage, json_safe
 from .provider import ProviderTurnResult
 
@@ -231,7 +231,10 @@ class GeminiModelTurnProvider:
                 raise TypeError("part is not an object")
             retained: dict[str, Any] = {}
             if isinstance(part.get("text"), str):
-                texts.append(part["text"])
+                if part.get("thought") is not True:
+                    texts.append(part["text"])
+                else:
+                    retained["thought"] = True
                 retained["text"] = part["text"]
             function = part.get("functionCall")
             if function is not None:

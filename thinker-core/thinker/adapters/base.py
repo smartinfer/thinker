@@ -22,6 +22,8 @@ class AdapterResponse:
     cost_usd: float = 0.0
     autoshrink_trace: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
+    execution: Optional[Dict[str, Any]] = None
+    qualification: Optional[Dict[str, Any]] = None
 
 class BaseAdapter(ABC):
     """Base class for all provider adapters."""

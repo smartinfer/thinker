@@ -2,6 +2,20 @@
 
 Unified, minimal LLM access with a registry-driven router and ThinkerQL request language.
 
+Start with the [Python library user manual](docs/USER_MANUAL.md) for direct model
+calls, optional caller-owned output constraints, concurrency, errors, and tracing.
+Automatic routing is deferred; debug tracing is off by default.
+
+The native [Go library and manual](docs/GO_USER_MANUAL.md) provide `ModelCall`
+with the same packet contract, caller-owned goroutines, and context cancellation.
+It requires no Python runtime or Thinker HTTP service.
+
+The [ThinkerQL 0.4 packet reference](docs/THINKERQL_V0_4.md) provides asynchronous
+`model_call` with preserved model output and structured errors. The legacy
+`Thinker.chat_ql` API continues to use ThinkerQL 0.3.
+Calls now use the existing metrics collector and offer opt-in redacted debug
+snapshots through local, S3, or GCS recorders. See the linked guide for usage.
+
 ## Overview
 
 Thinker provides a unified interface for accessing various LLM providers through a single request language (ThinkerQL) and a registry-driven routing system. The MVP supports OpenAI and local Ollama models with schema contracts, comprehensive testing, secure credential management, and real-time observability.

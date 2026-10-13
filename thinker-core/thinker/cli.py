@@ -71,6 +71,21 @@ def main():
     c6.add_argument("--ql-glob", required=True, help="Glob pattern for ThinkerQL files")
     c6.add_argument("--budget-usd", type=float, help="Budget limit in USD")
 
+    for parser in (c5, c6):
+        parser.add_argument('--qualification-profile', type=Path)
+        parser.add_argument('--qualification-records', type=Path)
+        parser.add_argument('--qualification-config', type=Path)
+
+    qual = sub.add_parser('qualify', help='Frozen application-contract qualification')
+    qual.add_argument('action', choices=['inspect', 'replay', 'run', 'status'])
+    qual.add_argument('--registry', required=True)
+    qual.add_argument('--profile', type=Path, required=True)
+    qual.add_argument('--records', type=Path, required=True)
+    qual.add_argument('--configuration', type=Path, required=True)
+    qual.add_argument('--call', required=True)
+    qual.add_argument('--authorize-target')
+    qual.add_argument('--fixtures', type=Path)
+
     local_parser = sub.add_parser("local", help="Manage direct local model aliases and cache")
     local_sub = local_parser.add_subparsers(dest="local_cmd", required=True)
     local_doctor_parser = local_sub.add_parser("doctor", help="Check Apple-Silicon MLX support")
@@ -101,6 +116,27 @@ def main():
 
     args = p.parse_args()
     store = RegistryStore()
+
+    if args.cmd == 'qualify':
+        from thinker.qualification import preflight, require_pass, run_suite
+        thinker = Thinker.from_files(args.registry)
+        thinker.qualification_profile = args.profile
+        thinker.qualification_root = args.records
+        thinker.qualification_config = json.loads(args.configuration.read_text())
+        call = thinker.store.get_call(args.call)
+        if call is None:
+            raise ValueError('CALL_NOT_FOUND')
+        if args.action == 'inspect':
+            result = preflight(thinker, call)
+        elif args.action == 'status':
+            result = require_pass(thinker, call)
+        else:
+            result = run_suite(thinker, args.call,
+                mode='LIVE_PROBE' if args.action == 'run' else 'REPLAY',
+                authorize_target=args.authorize_target,
+                fixtures=json.loads(args.fixtures.read_text()) if args.fixtures else None)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
 
     if args.cmd == "local":
         if args.local_cmd == "doctor":
@@ -309,6 +345,13 @@ def main():
         # Create Thinker instance
         thinker = Thinker.from_files(args.registry)
 
+        if args.qualification_profile:
+            if not args.qualification_records or not args.qualification_config:
+                raise ValueError('qualification profile, records and configuration are required together')
+            thinker.qualification_profile = args.qualification_profile
+            thinker.qualification_root = args.qualification_records
+            thinker.qualification_config = json.loads(args.qualification_config.read_text())
+
         # Process request
         response = thinker.chat_ql(ql_data)
 
@@ -318,6 +361,8 @@ def main():
         print(f"Provider: {response.provider}")
         print(f"Tokens: {response.tokens}")
         print(f"Cost: ${response.cost_usd:.4f}")
+        if args.qualification_profile:
+            print(json.dumps({'execution': response.execution, 'qualification': response.qualification}, indent=2))
         return
 
     if args.cmd == "map-chat-ql":
@@ -336,6 +381,13 @@ def main():
 
         # Create Thinker instance
         thinker = Thinker.from_files(args.registry)
+
+        if args.qualification_profile:
+            if not args.qualification_records or not args.qualification_config:
+                raise ValueError('qualification profile, records and configuration are required together')
+            thinker.qualification_profile = args.qualification_profile
+            thinker.qualification_root = args.qualification_records
+            thinker.qualification_config = json.loads(args.qualification_config.read_text())
 
         # Process requests
         try:

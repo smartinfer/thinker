@@ -1,0 +1,75 @@
+# Provider API provenance for the ThinkerQL 0.4 wire (Python wire.py and thinker-go).
+#
+# One entry per wire protocol. `docs_checked_at` records when the provider's own
+# documentation was last read for the facts listed; `live_verified` records the
+# last real provider call through this wire (null = never). The manifest test
+# warns when either is missing or older than `stale_after_days`. Refresh by
+# re-reading the docs and running live checks (proposal: docs/proposals in
+# Thinker main, PROVIDER_API_CURRENCY_20261011.md).
+format: thinkerql.provider-apis.v1
+stale_after_days: 30
+protocols:
+  chat:
+    payload_style: chat_completions_v1
+    providers: [openai, gemini-openai-compat, together, openai_compatible]
+    docs:
+      - url: https://developers.openai.com/api/docs/api-reference/chat/create
+        checked_at: 2026-10-11
+    facts:
+      - "max_tokens is deprecated in favor of max_completion_tokens; gpt-5.x rejects max_tokens (route token_limit_field)."
+      - "reasoning_effort is a top-level string: none, minimal, low, medium, high, xhigh, max (per-model subsets)."
+      - "prompt_cache_key is a supported body parameter."
+      - "Gemini OpenAI-compat: reasoning_effort none disables thinking only for 2.5 Flash-class models; not 2.5 Pro or 3.x (https://ai.google.dev/gemini-api/docs/openai, checked 2026-10-11)."
+    live_verified:
+      date: 2026-10-11
+      evidence: "Dolphin EC01 gpt-5.1 a-series (max_completion_tokens, reasoning_effort none via provider_options); gemini-2.5-flash compat 2026-10-10."
+      not_covered: "portable routing.reasoning {effort} mapping (new 2026-10-11) not yet called live."
+  responses:
+    payload_style: responses_v1
+    providers: [openai]
+    docs:
+      - url: https://developers.openai.com/api/docs/api-reference/responses/create
+        checked_at: 2026-10-11
+        partial: "page truncated in reading; reasoning/limit/cache sections not read"
+    facts:
+      - "include reasoning.encrypted_content carries reasoning items across turns when used statelessly (store false or zero data retention) (docs, 2026-10-11)."
+      - "Explicit cache breakpoints exist: prompt_cache_breakpoint with prompt_cache_options.ttl (docs, 2026-10-11; not mapped by this wire)."
+      - "reasoning.effort none, max_output_tokens, prompt_cache_key, store true + previous_response_id accepted live for gpt-5.1 (2026-10-11)."
+    live_verified:
+      date: 2026-10-11
+      evidence: "Dolphin EC01 gpt-5.1 b-series: reasoning.effort none, max_output_tokens 4096, prompt_cache_key, store true, previous_response_id."
+      not_covered: "encrypted reasoning replay (store false) never exercised."
+  anthropic:
+    payload_style: messages_v1
+    providers: [anthropic]
+    docs:
+      - url: https://platform.claude.com/docs/en/api/messages
+        checked_at: 2026-10-11
+    facts:
+      - "thinking: {type: adaptive} | {type: enabled, budget_tokens >= 1024 and < max_tokens} | {type: disabled}; behavior when omitted depends on the model."
+      - "output_config.effort: low, medium, high, xhigh, max (not mapped by the portable form)."
+      - "cache_control {type: ephemeral, ttl 5m|1h} per block or top-level (not mapped by this wire)."
+      - "anthropic-version header: value not stated on the reference page; Thinker sends 2023-06-01."
+    live_verified:
+      date: null
+      evidence: "No live call through the ThinkerQL wire recorded. Model-turn V1 (Python) real smoke with claude-haiku-4-5 is undated."
+  gemini:
+    payload_style: generateContent_v1beta
+    providers: [gemini]
+    docs:
+      - url: https://ai.google.dev/api/generate-content
+        checked_at: 2026-10-11
+      - url: https://ai.google.dev/gemini-api/docs/thinking
+        checked_at: 2026-10-11
+    facts:
+      - "Endpoint v1beta models/{model}:generateContent."
+      - "Part.thoughtSignature must be resent unchanged in stateless replay; FinishReason MISSING_THOUGHT_SIGNATURE when absent."
+      - "Gemini 3.x use thinking_level (per-model levels); thinking cannot be disabled on 2.5 Pro or 3.x."
+      - "Portable effort none renders thinkingConfig.thinkingBudget 0 (documented historically for 2.5 Flash; not found on the 2026-10-11 pages)."
+      - "Tools are sent as FunctionDeclaration.parametersJsonSchema (full JSON Schema, caller's schema unchanged). The `parameters` field accepts only an OpenAPI subset and rejects additionalProperties (HTTP 400). Both behaviours observed 2026-10-11: a fake-key request is schema-validated before the key, so parametersJsonSchema passed and failed only on API_KEY_INVALID."
+      - "thinkingConfig.thinkingBudget 0 disables thinking on gemini-2.5-flash (live 2026-10-11: no thoughtsTokenCount reported)."
+      - "usageMetadata omits zero-valued counts (proto3 JSON): an absent thoughtsTokenCount/cachedContentTokenCount within a reported block means 0."
+    live_verified:
+      date: 2026-10-11
+      evidence: "Dolphin EC01 c01 (gemini-2.5-flash, native generateContent, 3 turns): tools as parametersJsonSchema accepted; replayed functionCall/functionResponse with host-assigned ids accepted; thinkingBudget 0 -> usageMetadata had no thoughtsTokenCount (thinking off)."
+      not_covered: "thoughtSignature replay (Gemini 3.x) not exercised."

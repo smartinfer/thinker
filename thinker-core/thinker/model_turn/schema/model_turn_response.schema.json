@@ -1,5 +1,130 @@
 {
   "$defs": {
+    "CapabilityProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "adaptive": {
+          "default": false,
+          "title": "Adaptive",
+          "type": "boolean"
+        },
+        "budget_max": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Max"
+        },
+        "budget_min": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Min"
+        },
+        "disable_thinking": {
+          "default": false,
+          "title": "Disable Thinking",
+          "type": "boolean"
+        },
+        "effort_values": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Effort Values",
+          "type": "array"
+        },
+        "json_mode": {
+          "default": "UNSUPPORTED",
+          "enum": [
+            "NATIVE",
+            "EMULATED",
+            "UNSUPPORTED"
+          ],
+          "title": "Json Mode",
+          "type": "string"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "gemini"
+          ],
+          "title": "Provider",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "streaming": {
+          "default": "UNSUPPORTED",
+          "enum": [
+            "NATIVE",
+            "EMULATED",
+            "UNSUPPORTED"
+          ],
+          "title": "Streaming",
+          "type": "string"
+        },
+        "structured_output": {
+          "default": "UNSUPPORTED",
+          "enum": [
+            "NATIVE",
+            "EMULATED",
+            "UNSUPPORTED"
+          ],
+          "title": "Structured Output",
+          "type": "string"
+        },
+        "tools": {
+          "default": "UNSUPPORTED",
+          "enum": [
+            "NATIVE",
+            "EMULATED",
+            "UNSUPPORTED"
+          ],
+          "title": "Tools",
+          "type": "string"
+        },
+        "vision": {
+          "default": "UNSUPPORTED",
+          "enum": [
+            "NATIVE",
+            "EMULATED",
+            "UNSUPPORTED"
+          ],
+          "title": "Vision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "source"
+      ],
+      "title": "CapabilityProfile",
+      "type": "object"
+    },
     "Continuation": {
       "additionalProperties": false,
       "description": "Opaque provider transport state, never agent or project memory.",
@@ -33,6 +158,335 @@
         }
       },
       "title": "Cost",
+      "type": "object"
+    },
+    "InferenceOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answer"
+        },
+        "attempt_count": {
+          "default": 0,
+          "title": "Attempt Count",
+          "type": "integer"
+        },
+        "audit_directory": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audit Directory"
+        },
+        "audit_status": {
+          "default": "DISABLED",
+          "title": "Audit Status",
+          "type": "string"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "cost_status": {
+          "const": "UNKNOWN",
+          "default": "UNKNOWN",
+          "title": "Cost Status",
+          "type": "string"
+        },
+        "cost_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Usd"
+        },
+        "deadline_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deadline At"
+        },
+        "elapsed_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elapsed Seconds"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "execution_status": {
+          "enum": [
+            "COMPLETED",
+            "REFUSAL",
+            "INCOMPLETE",
+            "PROVIDER_ERROR",
+            "TIMED_OUT",
+            "CANCELLED",
+            "CONFIGURATION_ERROR"
+          ],
+          "title": "Execution Status",
+          "type": "string"
+        },
+        "finish_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finish Reason"
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Http Status"
+        },
+        "opaque_artifacts": {
+          "default": 0,
+          "title": "Opaque Artifacts",
+          "type": "integer"
+        },
+        "reasoning_artifacts": {
+          "default": 0,
+          "title": "Reasoning Artifacts",
+          "type": "integer"
+        },
+        "remote_cancellation_confirmed": {
+          "default": false,
+          "title": "Remote Cancellation Confirmed",
+          "type": "boolean"
+        },
+        "resolved_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Model"
+        },
+        "response_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Sha256"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "structure_status": {
+          "default": "NOT_EVALUATED",
+          "enum": [
+            "VALID",
+            "INVALID",
+            "NOT_EVALUATED"
+          ],
+          "title": "Structure Status",
+          "type": "string"
+        },
+        "structured_output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "usage": {
+          "$ref": "#/$defs/UsageReport"
+        },
+        "version": {
+          "const": "thinker.inference-outcome.v1",
+          "default": "thinker.inference-outcome.v1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "execution_status"
+      ],
+      "title": "InferenceOutcome",
+      "type": "object"
+    },
+    "InferencePlan": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/CapabilityProfile"
+        },
+        "enforcement": {
+          "enum": [
+            "NATIVE",
+            "EMULATED",
+            "NOT_REQUESTED"
+          ],
+          "title": "Enforcement",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "title": "Prompt Sha256",
+          "type": "string"
+        },
+        "provider": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "gemini"
+          ],
+          "title": "Provider",
+          "type": "string"
+        },
+        "registry_sha256": {
+          "title": "Registry Sha256",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "request_sha256": {
+          "title": "Request Sha256",
+          "type": "string"
+        },
+        "revision": {
+          "default": "unversioned",
+          "title": "Revision",
+          "type": "string"
+        },
+        "route": {
+          "title": "Route",
+          "type": "string"
+        },
+        "schema_sha256": {
+          "title": "Schema Sha256",
+          "type": "string"
+        },
+        "settings_sha256": {
+          "title": "Settings Sha256",
+          "type": "string"
+        },
+        "thinking": {
+          "$ref": "#/$defs/ThinkingControl"
+        },
+        "version": {
+          "const": "thinker.inference-plan.v1",
+          "default": "thinker.inference-plan.v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "workaround": {
+          "anyOf": [
+            {
+              "const": "JSON_PROMPT",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workaround"
+        }
+      },
+      "required": [
+        "request_id",
+        "registry_sha256",
+        "provider",
+        "route",
+        "model",
+        "enforcement",
+        "capabilities",
+        "thinking",
+        "request_sha256",
+        "schema_sha256",
+        "prompt_sha256",
+        "settings_sha256"
+      ],
+      "title": "InferencePlan",
       "type": "object"
     },
     "JsonValue": {},
@@ -100,6 +554,50 @@
       ],
       "title": "ModelTurnErrorCode",
       "type": "string"
+    },
+    "ThinkingControl": {
+      "additionalProperties": false,
+      "properties": {
+        "budget_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Tokens"
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "mode": {
+          "default": "provider_default",
+          "enum": [
+            "provider_default",
+            "disabled",
+            "effort",
+            "budget",
+            "adaptive"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "title": "ThinkingControl",
+      "type": "object"
     },
     "ToolCall": {
       "additionalProperties": false,
@@ -187,6 +685,98 @@
       },
       "title": "Usage",
       "type": "object"
+    },
+    "UsageReport": {
+      "additionalProperties": false,
+      "properties": {
+        "cached_input_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cached Input Tokens"
+        },
+        "input_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Tokens"
+        },
+        "raw": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Raw",
+          "type": "object"
+        },
+        "reasoning_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reasoning Tokens"
+        },
+        "total_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Tokens"
+        },
+        "visible_output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible Output Tokens"
+        }
+      },
+      "title": "UsageReport",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -215,7 +805,14 @@
       "default": null
     },
     "cost": {
-      "$ref": "#/$defs/Cost"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Cost"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "duration_ms": {
       "default": 0.0,
@@ -234,6 +831,28 @@
       ],
       "default": null,
       "title": "Finish Reason"
+    },
+    "inference_outcome": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InferenceOutcome"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "inference_plan": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InferencePlan"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "normalized_error": {
       "anyOf": [
@@ -324,7 +943,14 @@
       "type": "array"
     },
     "usage": {
-      "$ref": "#/$defs/Usage"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Usage"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [

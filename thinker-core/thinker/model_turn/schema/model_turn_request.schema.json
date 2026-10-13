@@ -88,6 +88,52 @@
       "title": "GenerationParameters",
       "type": "object"
     },
+    "InferencePolicy": {
+      "additionalProperties": false,
+      "description": "Opt-in planned execution; never implicitly applied to legacy V1 calls.",
+      "properties": {
+        "expected_model": {
+          "minLength": 1,
+          "title": "Expected Model",
+          "type": "string"
+        },
+        "max_attempts": {
+          "const": 1,
+          "default": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "schema_policy": {
+          "default": "NATIVE_REQUIRED",
+          "enum": [
+            "NATIVE_REQUIRED",
+            "ALLOW_EMULATION"
+          ],
+          "title": "Schema Policy",
+          "type": "string"
+        },
+        "thinking": {
+          "$ref": "#/$defs/ThinkingControl"
+        },
+        "tool_policy": {
+          "const": "NONE",
+          "default": "NONE",
+          "title": "Tool Policy",
+          "type": "string"
+        },
+        "version": {
+          "const": "thinker.inference-policy.v1",
+          "default": "thinker.inference-policy.v1",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expected_model"
+      ],
+      "title": "InferencePolicy",
+      "type": "object"
+    },
     "JsonValue": {},
     "MessageRole": {
       "enum": [
@@ -141,6 +187,50 @@
       ],
       "title": "ReasoningEffort",
       "type": "string"
+    },
+    "ThinkingControl": {
+      "additionalProperties": false,
+      "properties": {
+        "budget_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Tokens"
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effort"
+        },
+        "mode": {
+          "default": "provider_default",
+          "enum": [
+            "provider_default",
+            "disabled",
+            "effort",
+            "budget",
+            "adaptive"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "title": "ThinkingControl",
+      "type": "object"
     },
     "ToolCall": {
       "additionalProperties": false,
@@ -246,6 +336,17 @@
     },
     "generation": {
       "$ref": "#/$defs/GenerationParameters"
+    },
+    "inference_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InferencePolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "messages": {
       "items": {

@@ -29,44 +29,52 @@ class MetricsStorage:
     
     def _init_database(self):
         """Initialize the database schema."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS requests (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    request_id TEXT NOT NULL,
-                    timestamp REAL NOT NULL,
-                    provider TEXT NOT NULL,
-                    model TEXT NOT NULL,
-                    call_id TEXT NOT NULL,
-                    input_tokens INTEGER NOT NULL,
-                    output_tokens INTEGER NOT NULL,
-                    latency_ms REAL NOT NULL,
-                    cost_usd REAL NOT NULL,
-                    status TEXT NOT NULL,
-                    error_code TEXT
-                )
-            """)
-            
-            # Create indexes for better query performance
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON requests(timestamp)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_provider ON requests(provider)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_status ON requests(status)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_request_id ON requests(request_id)")
-            
-            conn.commit()
-    
+        schema = """(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL, timestamp REAL NOT NULL,
+            provider TEXT NOT NULL, model TEXT NOT NULL, call_id TEXT NOT NULL,
+            input_tokens INTEGER, output_tokens INTEGER,
+            latency_ms REAL NOT NULL, cost_usd REAL,
+            status TEXT NOT NULL, error_code TEXT,
+            job_id TEXT, turn_id TEXT, invocation_id TEXT, outcome TEXT
+        )"""
+        with sqlite3.connect(self.db_path, timeout=30) as conn:
+            # Serialize migration with concurrent collector construction.
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("CREATE TABLE IF NOT EXISTS requests " + schema)
+            columns = conn.execute("PRAGMA table_info(requests)").fetchall()
+            old_names = {column[1] for column in columns}
+            nullable = {"input_tokens", "output_tokens", "cost_usd"}
+            if any(column[1] in nullable and column[3] for column in columns):
+                # SQLite cannot drop NOT NULL directly. Rebuild atomically,
+                # preserving original IDs, timestamps, rows, and known fields.
+                conn.execute("CREATE TABLE requests_migration " + schema)
+                names = ", ".join('"' + column[1].replace('"', '""') + '"' for column in columns)
+                conn.execute(f"INSERT INTO requests_migration ({names}) SELECT {names} FROM requests")
+                conn.execute("DROP TABLE requests")
+                conn.execute("ALTER TABLE requests_migration RENAME TO requests")
+            else:
+                for name in ("job_id", "turn_id", "invocation_id", "outcome"):
+                    if name not in old_names:
+                        conn.execute(f"ALTER TABLE requests ADD COLUMN {name} TEXT")
+            for name in ("timestamp", "provider", "status", "request_id", "job_id", "turn_id"):
+                conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{name} ON requests({name})")
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_invocation_id ON requests(invocation_id)")
+
     def record_request(
         self,
         request_id: str,
         provider: str,
         model: str,
         call_id: str,
-        input_tokens: int,
-        output_tokens: int,
+        input_tokens: Optional[int],
+        output_tokens: Optional[int],
         latency_ms: float,
-        cost_usd: float,
+        cost_usd: Optional[float],
         status: str,
-        error_code: Optional[str] = None
+        error_code: Optional[str] = None,
+        *, job_id: Optional[str] = None, turn_id: Optional[str] = None,
+        invocation_id: Optional[str] = None, outcome: Optional[str] = None
     ):
         """
         Record a request in the database.
@@ -83,17 +91,17 @@ class MetricsStorage:
             status: Request status (success, error)
             error_code: Error code if status is error
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30) as conn:
             conn.execute("""
                 INSERT INTO requests (
                     request_id, timestamp, provider, model, call_id,
                     input_tokens, output_tokens, latency_ms, cost_usd,
-                    status, error_code
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    status, error_code, job_id, turn_id, invocation_id, outcome
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 request_id, time.time(), provider, model, call_id,
                 input_tokens, output_tokens, latency_ms, cost_usd,
-                status, error_code
+                status, error_code, job_id, turn_id, invocation_id, outcome
             ))
             conn.commit()
     
@@ -119,7 +127,7 @@ class MetricsStorage:
         if until is None:
             until = time.time()
         
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30) as conn:
             # Base query
             where_clauses = ["timestamp >= ?", "timestamp <= ?"]
             params = [since, until]
@@ -140,7 +148,8 @@ class MetricsStorage:
                     SUM(cost_usd) as total_cost,
                     AVG(latency_ms) as avg_latency,
                     MIN(latency_ms) as min_latency,
-                    MAX(latency_ms) as max_latency
+                    MAX(latency_ms) as max_latency,
+                    SUM(input_tokens IS NULL), SUM(output_tokens IS NULL), SUM(cost_usd IS NULL)
                 FROM requests 
                 WHERE {where_sql}
             """, params)
@@ -149,7 +158,7 @@ class MetricsStorage:
             if not row:
                 return self._empty_stats()
             
-            total_requests, successful_requests, total_input_tokens, total_output_tokens, total_cost, avg_latency, min_latency, max_latency = row
+            total_requests, successful_requests, total_input_tokens, total_output_tokens, total_cost, avg_latency, min_latency, max_latency, unknown_input, unknown_output, unknown_cost = row
             
             # Get success rate
             success_rate = (successful_requests / total_requests * 100) if total_requests > 0 else 0
@@ -186,9 +195,12 @@ class MetricsStorage:
                 "total_requests": total_requests or 0,
                 "successful_requests": successful_requests or 0,
                 "success_rate": round(success_rate, 2),
-                "total_input_tokens": total_input_tokens or 0,
-                "total_output_tokens": total_output_tokens or 0,
-                "total_cost": round(total_cost or 0, 4),
+                "total_input_tokens": None if unknown_input else total_input_tokens or 0,
+                "total_output_tokens": None if unknown_output else total_output_tokens or 0,
+                "total_cost": None if unknown_cost else round(total_cost or 0, 4),
+                "unknown_input_requests": unknown_input or 0,
+                "unknown_output_requests": unknown_output or 0,
+                "unknown_cost_requests": unknown_cost or 0,
                 "avg_latency": round(avg_latency or 0, 2),
                 "min_latency": round(min_latency or 0, 2),
                 "max_latency": round(max_latency or 0, 2),
@@ -214,7 +226,7 @@ class MetricsStorage:
         if since is None:
             since = time.time() - 86400  # 24 hours ago
         
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30) as conn:
             cursor = conn.execute("""
                 SELECT 
                     provider,
@@ -223,7 +235,8 @@ class MetricsStorage:
                     SUM(input_tokens) as total_input_tokens,
                     SUM(output_tokens) as total_output_tokens,
                     SUM(cost_usd) as total_cost,
-                    AVG(latency_ms) as avg_latency
+                    AVG(latency_ms) as avg_latency,
+                    SUM(input_tokens IS NULL), SUM(output_tokens IS NULL), SUM(cost_usd IS NULL)
                 FROM requests 
                 WHERE timestamp >= ?
                 GROUP BY provider
@@ -232,7 +245,7 @@ class MetricsStorage:
             
             provider_stats = {}
             for row in cursor.fetchall():
-                provider, total_requests, successful_requests, total_input_tokens, total_output_tokens, total_cost, avg_latency = row
+                provider, total_requests, successful_requests, total_input_tokens, total_output_tokens, total_cost, avg_latency, unknown_input, unknown_output, unknown_cost = row
                 
                 success_rate = (successful_requests / total_requests * 100) if total_requests > 0 else 0
                 
@@ -240,9 +253,12 @@ class MetricsStorage:
                     "total_requests": total_requests,
                     "successful_requests": successful_requests,
                     "success_rate": round(success_rate, 2),
-                    "total_input_tokens": total_input_tokens or 0,
-                    "total_output_tokens": total_output_tokens or 0,
-                    "total_cost": round(total_cost or 0, 4),
+                    "total_input_tokens": None if unknown_input else total_input_tokens or 0,
+                    "total_output_tokens": None if unknown_output else total_output_tokens or 0,
+                    "total_cost": None if unknown_cost else round(total_cost or 0, 4),
+                    "unknown_input_requests": unknown_input or 0,
+                    "unknown_output_requests": unknown_output or 0,
+                    "unknown_cost_requests": unknown_cost or 0,
                     "avg_latency": round(avg_latency or 0, 2)
                 }
             
@@ -257,7 +273,7 @@ class MetricsStorage:
         """
         cutoff_time = time.time() - (days_to_keep * 86400)
         
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30) as conn:
             cursor = conn.execute("DELETE FROM requests WHERE timestamp < ?", (cutoff_time,))
             deleted_count = cursor.rowcount
             conn.commit()

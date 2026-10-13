@@ -76,3 +76,11 @@ is explicitly identified as a package version rather than a source revision.
 The runtime observability callback receives only IDs, route/model provenance,
 duration, usage, cost, finish reason, and normalized error. It receives no
 messages, tool results, structured output, environment, or credentials.
+
+## Opt-in planned inference (2026-10-07)
+
+The existing endpoint accepts an optional `inference_policy` for capability-checked, exact-route, single-attempt execution. See [Planned inference](INFERENCE_PLANNING.md) for host profiles, functional planning/lowering/lifting, thinking controls, audit capture, and normalized outcome states. Requests without the policy retain legacy behavior. Planned callers must inspect `inference_outcome`; usage and cost may be null when unknown. Offline conformance does not qualify a concrete live model.
+
+## Qualification gate (2026-10-07)
+
+Ordinary live targets must now use qualified ThinkerQL. The default standalone Model-Turn runtime refuses live execution; deterministic fake routes and explicit host-injected offline test transports remain. See [Qualification](QUALIFICATION.md) for contract-bound immutable records and separately authorized qualification probes.

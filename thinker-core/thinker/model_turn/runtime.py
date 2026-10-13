@@ -51,7 +51,15 @@ class ModelTurnRuntime:
         provider_factories: dict[str, ProviderFactory] | None = None,
         observer: ObservationSink | None = None,
         thinker_revision: str | None = None,
+        inference_profiles: dict | None = None,
+        inference_audit_root: str | None = None,
+        inference_sender=None,
+        inference_credentials=None,
     ) -> None:
+        self.inference_profiles = inference_profiles or {}
+        self.inference_audit_root = inference_audit_root
+        self.inference_sender = inference_sender
+        self.inference_credentials = inference_credentials
         self.store = store
         self.pricebook = pricebook or PriceBook()
         self._provider_factories = provider_factories or {}
@@ -75,6 +83,17 @@ class ModelTurnRuntime:
             return True
 
     def turn(self, request: ModelTurnRequest) -> ModelTurnResponse:
+        if request.inference_policy is not None:
+            if self.inference_sender is None:
+                return self._failure_response(
+                    request, time.monotonic(),
+                    ModelTurnError(code=ModelTurnErrorCode.MODEL_UNAVAILABLE,
+                        message="QUALIFICATION_REQUIRED: use the qualified ThinkerQL entry point"),
+                )
+            # Explicit host-injected transports are offline conformance seams. They do not
+            # create qualification evidence and cannot mint a live PASS.
+            from .inference_runtime import planned_turn
+            return planned_turn(self, request)
         started = time.monotonic()
         call: RegistryCall | None = None
         cancel_event = threading.Event()
@@ -93,6 +112,12 @@ class ModelTurnRuntime:
         try:
             try:
                 call = self._resolve(request)
+                if call.adapter != "fake" and call.adapter not in self._provider_factories:
+                    return self._failure_response(
+                        request, started,
+                        ModelTurnError(code=ModelTurnErrorCode.MODEL_UNAVAILABLE,
+                            message="QUALIFICATION_REQUIRED: use the qualified ThinkerQL entry point"),
+                    )
                 provider = self._provider(call)
             except (KeyError, ValueError):
                 return self._failure_response(
@@ -403,8 +428,8 @@ class ModelTurnRuntime:
                 # "default" (None) from "high". None = none/absent.
                 "reasoning_effort": reasoning_effort.value if reasoning_effort is not None else None,
                 "duration_ms": response.duration_ms,
-                "usage": response.usage.model_dump(mode="json"),
-                "cost": response.cost.model_dump(mode="json"),
+                "usage": response.usage.model_dump(mode="json") if response.usage else None,
+                "cost": response.cost.model_dump(mode="json") if response.cost else None,
                 "finish_reason": response.finish_reason,
                 "normalized_error": (
                     response.normalized_error.model_dump(mode="json")

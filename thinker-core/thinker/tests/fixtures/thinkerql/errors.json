@@ -1,0 +1,812 @@
+[
+  {
+    "name": "http-400",
+    "input": {
+      "http_status": 400
+    },
+    "expected": "REQUEST_REJECTED"
+  },
+  {
+    "name": "http-401",
+    "input": {
+      "http_status": 401
+    },
+    "expected": "AUTHENTICATION_FAILED"
+  },
+  {
+    "name": "http-402",
+    "input": {
+      "http_status": 402
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "http-403",
+    "input": {
+      "http_status": 403
+    },
+    "expected": "ACCESS_DENIED"
+  },
+  {
+    "name": "http-404",
+    "input": {
+      "http_status": 404
+    },
+    "expected": "MODEL_UNAVAILABLE"
+  },
+  {
+    "name": "http-408",
+    "input": {
+      "http_status": 408
+    },
+    "expected": "TIMEOUT"
+  },
+  {
+    "name": "http-409",
+    "input": {
+      "http_status": 409
+    },
+    "expected": "CONFLICT"
+  },
+  {
+    "name": "http-413",
+    "input": {
+      "http_status": 413
+    },
+    "expected": "PAYLOAD_TOO_LARGE"
+  },
+  {
+    "name": "http-422",
+    "input": {
+      "http_status": 422
+    },
+    "expected": "REQUEST_REJECTED"
+  },
+  {
+    "name": "http-429",
+    "input": {
+      "http_status": 429
+    },
+    "expected": "RATE_LIMITED"
+  },
+  {
+    "name": "http-500",
+    "input": {
+      "http_status": 500
+    },
+    "expected": "PROVIDER_ERROR"
+  },
+  {
+    "name": "http-502",
+    "input": {
+      "http_status": 502
+    },
+    "expected": "PROVIDER_ERROR"
+  },
+  {
+    "name": "http-503",
+    "input": {
+      "http_status": 503
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  },
+  {
+    "name": "http-504",
+    "input": {
+      "http_status": 504
+    },
+    "expected": "TIMEOUT"
+  },
+  {
+    "name": "http-529",
+    "input": {
+      "http_status": 529
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  },
+  {
+    "name": "http-599",
+    "input": {
+      "http_status": 599
+    },
+    "expected": "PROVIDER_ERROR"
+  },
+  {
+    "name": "openai-quota-429",
+    "input": {
+      "http_status": 429,
+      "body": {
+        "error": {
+          "code": "insufficient_quota",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "organization-cap",
+    "input": {
+      "http_status": 429,
+      "body": {
+        "error": {
+          "code": "organization_usage_limit_exceeded",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "credit-balance-403",
+    "input": {
+      "http_status": 403,
+      "body": {
+        "error": {
+          "code": "credit_balance_exhausted",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "paid-model-credit-404",
+    "input": {
+      "http_status": 404,
+      "body": {
+        "error": {
+          "code": "insufficient_credits_for_paid_model",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "anthropic-auth-403",
+    "input": {
+      "http_status": 403,
+      "body": {
+        "error": {
+          "code": "authentication_error",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "AUTHENTICATION_FAILED"
+  },
+  {
+    "name": "permission-403",
+    "input": {
+      "http_status": 403,
+      "body": {
+        "error": {
+          "code": "permission_denied",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "ACCESS_DENIED"
+  },
+  {
+    "name": "openai-context",
+    "input": {
+      "http_status": 400,
+      "body": {
+        "error": {
+          "code": "context_length_exceeded",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "CONTEXT_LIMIT"
+  },
+  {
+    "name": "bad-parameter",
+    "input": {
+      "http_status": 400,
+      "body": {
+        "error": {
+          "code": "unsupported_parameter",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "REQUEST_REJECTED"
+  },
+  {
+    "name": "rejected-continuation",
+    "input": {
+      "http_status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_encrypted_content",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "CONTINUATION_REJECTED"
+  },
+  {
+    "name": "openai-stale-signature",
+    "input": {
+      "http_status": 400,
+      "body": {
+        "error": {
+          "code": "thinking_signature_invalid",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "CONTINUATION_REJECTED"
+  },
+  {
+    "name": "overloaded-429",
+    "input": {
+      "http_status": 429,
+      "body": {
+        "error": {
+          "code": "upstream_unavailable",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  },
+  {
+    "name": "local-memory-guard",
+    "input": {
+      "http_status": 400,
+      "body": {
+        "error": {
+          "code": "prefill_memory_exceeded",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "LOCAL_RESOURCE_EXHAUSTED"
+  },
+  {
+    "name": "broken-stream-event",
+    "input": {
+      "http_status": 200,
+      "body": {
+        "error": {
+          "code": "incomplete_stream",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "BROKEN_STREAM"
+  },
+  {
+    "name": "malformed-provider-event",
+    "input": {
+      "http_status": 200,
+      "body": {
+        "error": {
+          "code": "provider_stream_non_json_data",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "PROTOCOL_ERROR"
+  },
+  {
+    "name": "host-confirmed-auth-permanent",
+    "input": {
+      "http_status": 401,
+      "body": {
+        "error": {
+          "code": "auth_permanent",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "AUTHENTICATION_PERMANENT"
+  },
+  {
+    "name": "host-confirmed-incomplete",
+    "input": {
+      "http_status": 200,
+      "body": {
+        "error": {
+          "code": "incomplete_response",
+          "message": "Provider diagnostic"
+        }
+      }
+    },
+    "expected": "INCOMPLETE_RESPONSE"
+  },
+  {
+    "name": "waf",
+    "input": {
+      "http_status": 403,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Attention required! | Cloudflare"
+        }
+      }
+    },
+    "expected": "UPSTREAM_BLOCKED"
+  },
+  {
+    "name": "expired-token-403",
+    "input": {
+      "http_status": 403,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Token expired"
+        }
+      }
+    },
+    "expected": "AUTHENTICATION_FAILED"
+  },
+  {
+    "name": "billing-403",
+    "input": {
+      "http_status": 403,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Budget limit exceeded (monthly limit)"
+        }
+      }
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "context-text",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "This model maximum context length is 8192 tokens."
+        }
+      }
+    },
+    "expected": "CONTEXT_LIMIT"
+  },
+  {
+    "name": "payload-text",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Request entity too large"
+        }
+      }
+    },
+    "expected": "PAYLOAD_TOO_LARGE"
+  },
+  {
+    "name": "image-size",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Image dimensions exceed max allowed size"
+        }
+      }
+    },
+    "expected": "IMAGE_TOO_LARGE"
+  },
+  {
+    "name": "corrupt-image",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Base64 string of provided image cannot be decoded"
+        }
+      }
+    },
+    "expected": "IMAGE_CORRUPT"
+  },
+  {
+    "name": "policy-endpoints",
+    "input": {
+      "http_status": 404,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "No endpoints found matching your data policy"
+        }
+      }
+    },
+    "expected": "PROVIDER_POLICY_BLOCKED"
+  },
+  {
+    "name": "account-policy",
+    "input": {
+      "http_status": 200,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Blocked for a previous policy violation"
+        }
+      }
+    },
+    "expected": "PROVIDER_POLICY_BLOCKED"
+  },
+  {
+    "name": "prompt-safety",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Your prompt was flagged by our safety system"
+        }
+      }
+    },
+    "expected": "CONTENT_BLOCKED"
+  },
+  {
+    "name": "model-entitlement",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "The requested model is not supported when using Codex with a ChatGPT account"
+        }
+      }
+    },
+    "expected": "MODEL_ENTITLEMENT"
+  },
+  {
+    "name": "role-alternation",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Conversation roles must alternate user/assistant"
+        }
+      }
+    },
+    "expected": "ROLE_ALTERNATION"
+  },
+  {
+    "name": "tool-content",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Tool message content must be a string"
+        }
+      }
+    },
+    "expected": "MULTIMODAL_TOOL_CONTENT_UNSUPPORTED"
+  },
+  {
+    "name": "mandatory-reasoning",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Reasoning is mandatory for this model"
+        }
+      }
+    },
+    "expected": "REASONING_REQUIRED"
+  },
+  {
+    "name": "anthropic-signature",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Invalid signature in thinking block"
+        }
+      }
+    },
+    "expected": "THINKING_SIGNATURE_INVALID"
+  },
+  {
+    "name": "anthropic-modified-thinking",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Thinking blocks cannot be modified"
+        }
+      }
+    },
+    "expected": "THINKING_SIGNATURE_INVALID"
+  },
+  {
+    "name": "long-context-tier",
+    "input": {
+      "http_status": 429,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Extra usage is required for long context"
+        }
+      }
+    },
+    "expected": "LONG_CONTEXT_TIER"
+  },
+  {
+    "name": "oauth-beta",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Long context beta is not yet available for this authentication method"
+        }
+      }
+    },
+    "expected": "OAUTH_LONG_CONTEXT_BETA_FORBIDDEN"
+  },
+  {
+    "name": "llama-grammar",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Error parsing grammar: unsupported token"
+        }
+      }
+    },
+    "expected": "GRAMMAR_UNSUPPORTED"
+  },
+  {
+    "name": "schema-lookaround",
+    "input": {
+      "http_status": 400,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Invalid JSON schema: regex lookaround is not supported"
+        }
+      }
+    },
+    "expected": "GRAMMAR_UNSUPPORTED"
+  },
+  {
+    "name": "zai-overload",
+    "input": {
+      "http_status": 429,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Service is temporarily overloaded"
+        }
+      }
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  },
+  {
+    "name": "tls-plain-text",
+    "input": {
+      "http_status": null,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "certificate verify failed"
+        }
+      }
+    },
+    "expected": "TLS_ERROR"
+  },
+  {
+    "name": "wrapped-network",
+    "input": {
+      "http_status": null,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Network is unreachable"
+        }
+      }
+    },
+    "expected": "CONNECTION_ERROR"
+  },
+  {
+    "name": "wrapped-timeout",
+    "input": {
+      "http_status": null,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Request timed out"
+        }
+      }
+    },
+    "expected": "TIMEOUT"
+  },
+  {
+    "name": "unknown",
+    "input": {
+      "http_status": null,
+      "provider": null,
+      "body": {
+        "error": {
+          "message": "Unrecognized provider condition"
+        }
+      }
+    },
+    "expected": "UNKNOWN"
+  },
+  {
+    "name": "openrouter-upstream-rate",
+    "input": {
+      "provider": "openrouter",
+      "http_status": 429,
+      "body": {
+        "error": {
+          "message": "Rate limit exceeded",
+          "metadata": {
+            "provider_name": "upstream-model-provider"
+          }
+        }
+      }
+    },
+    "expected": "UPSTREAM_RATE_LIMITED"
+  },
+  {
+    "name": "codex-usage-window",
+    "input": {
+      "http_status": 429,
+      "body": {
+        "error": {
+          "code": "usage_limit_reached",
+          "resets_in_seconds": 120
+        }
+      }
+    },
+    "expected": "RATE_LIMITED"
+  },
+  {
+    "name": "codex-usage-exhaustion",
+    "input": {
+      "http_status": 429,
+      "body": {
+        "error": {
+          "code": "usage_limit_reached",
+          "message": "Plan usage limit exhausted"
+        }
+      }
+    },
+    "expected": "QUOTA_EXHAUSTED"
+  },
+  {
+    "name": "gemini-unavailable",
+    "input": {
+      "provider": "gemini",
+      "body": {
+        "error": {
+          "code": 503,
+          "status": "UNAVAILABLE",
+          "message": "Model service unavailable"
+        }
+      }
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  },
+  {
+    "name": "gemini-stream-error",
+    "input": {
+      "provider": "google",
+      "http_status": 200,
+      "stream_started": true,
+      "body": {
+        "error": {
+          "code": 503,
+          "status": "UNAVAILABLE"
+        }
+      }
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  },
+  {
+    "name": "gemini-deadline",
+    "input": {
+      "provider": "vertex",
+      "body": {
+        "error": {
+          "code": 504,
+          "status": "DEADLINE_EXCEEDED"
+        }
+      }
+    },
+    "expected": "TIMEOUT"
+  },
+  {
+    "name": "body-json-string",
+    "input": {
+      "http_status": 403,
+      "body": "{\"error\":{\"type\":\"authentication_error\",\"message\":\"Unauthorized\"}}"
+    },
+    "expected": "AUTHENTICATION_FAILED"
+  },
+  {
+    "name": "plain-error-body",
+    "input": {
+      "body": "Connection refused"
+    },
+    "expected": "CONNECTION_ERROR"
+  },
+  {
+    "name": "partial-disconnect-body",
+    "input": {
+      "stream_started": true,
+      "body": "Peer closed connection"
+    },
+    "expected": "BROKEN_STREAM"
+  },
+  {
+    "name": "provider-cancelled",
+    "input": {
+      "provider": "gemini",
+      "body": {
+        "error": {
+          "code": 499,
+          "status": "CANCELLED",
+          "message": "Request cancelled"
+        }
+      }
+    },
+    "expected": "CANCELLED"
+  },
+  {
+    "name": "forgecode-ECONNRESET",
+    "input": {
+      "body": {
+        "error": {
+          "code": "ECONNRESET"
+        }
+      }
+    },
+    "expected": "CONNECTION_ERROR"
+  },
+  {
+    "name": "forgecode-ETIMEDOUT",
+    "input": {
+      "body": {
+        "error": {
+          "code": "ETIMEDOUT"
+        }
+      }
+    },
+    "expected": "TIMEOUT"
+  },
+  {
+    "name": "forgecode-ERR_STREAM_PREMATURE_CLOSE",
+    "input": {
+      "body": {
+        "error": {
+          "code": "ERR_STREAM_PREMATURE_CLOSE"
+        }
+      }
+    },
+    "expected": "BROKEN_STREAM"
+  },
+  {
+    "name": "forgecode-server_is_overloaded",
+    "input": {
+      "body": {
+        "error": {
+          "code": "server_is_overloaded"
+        }
+      }
+    },
+    "expected": "PROVIDER_OVERLOADED"
+  }
+]

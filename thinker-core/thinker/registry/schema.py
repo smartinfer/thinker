@@ -39,6 +39,10 @@ class RegistryCall(BaseModel):
     aliases: List[str] = []                        # ["openai:multimodal-cheap"]
     reasoning_effort: Optional[str] = None         # route-level default effort: none|low|medium|high (requires "reasoning_effort" cap)
     max_output_tokens: Optional[int] = None        # route-level per-call output-token floor (reasoning models need headroom)
+    # Explicit completion-limit parameter name. None keeps each protocol's
+    # field; "max_completion_tokens" is verified for OpenAI Chat Completions
+    # models (e.g. gpt-5.x) that reject the legacy "max_tokens". Never both.
+    token_limit_field: Optional[str] = None
 
     @field_validator("call_id")
     @classmethod
