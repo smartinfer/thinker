@@ -12,6 +12,18 @@ calls:
     payload_style: "chat_completions_v1"
     aliases: ["openai:multimodal-cheap"]
 
+  - call_id: "openai:gpt-4o.chat"
+    provider: "openai"
+    model_id: "gpt-4o"
+    kind: "chat"
+    modality: "multimodal"
+    caps: ["json_mode","tools","images_in"]
+    limits: { max_input_tokens: 128000, max_output_tokens: 16384 }
+    price: { input_per_1k: 0.0025, output_per_1k: 0.010 }
+    adapter: "openai"
+    payload_style: "chat_completions_v1"
+    aliases: ["openai:strong-chat"]
+
   - call_id: "openai:text-embedding-3-large.embed"
     provider: "openai"
     model_id: "text-embedding-3-large"
