@@ -1,0 +1,51 @@
+name: Thinker CI
+
+"on":
+  push:
+    branches: [main, release, 'feature/**', 'fix/**']
+  pull_request:
+    branches: [main, release]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thinker-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: Thinker validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: thinker-core
+      THINKER_RUN_MLX_REAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.23.12'
+          cache: false
+      - name: Install Python test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Python regression suite
+        run: python -m pytest thinker-core/thinker/tests -o addopts= -q --tb=short
+      - name: Go tests with race detection
+        working-directory: thinker-go
+        run: go test -race ./...
+      - name: Check embedded Go contracts
+        run: python tools/sync_go_contract.py --check
+      - name: Python and Go parity
+        run: python tools/check_go_parity.py
